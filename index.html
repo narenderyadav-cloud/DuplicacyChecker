@@ -1,801 +1,352 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DupGuard — Duplicate Checker</title>
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,500;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#f0efe9;--surface:#fff;--surface2:#f7f6f2;--border:#e4e2d8;--border2:#ccc9bc;
-  --text:#1a1916;--text2:#5c5a54;--text3:#9b9890;
-  --accent:#2563eb;--accent-bg:#eff4ff;--accent-border:#bfcffd;
-  --green:#16a34a;--green-bg:#f0fdf4;--green-border:#bbf7d0;
-  --red:#dc2626;--red-bg:#fef2f2;--red-border:#fecaca;
-  --amber:#b45309;--amber-bg:#fffbeb;--amber-border:#fde68a;
-  --radius:10px;--radius-sm:6px;
-}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.6}
-.nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:54px;position:sticky;top:0;z-index:100}
-.nav-brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:16px;letter-spacing:-.3px}
-.brand-dot{width:9px;height:9px;background:var(--accent);border-radius:50%}
-.nav-tabs{display:flex;gap:3px}
-.nav-tab{padding:6px 15px;border-radius:var(--radius-sm);border:none;background:transparent;color:var(--text2);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s}
-.nav-tab:hover{background:var(--surface2);color:var(--text)}
-.nav-tab.active{background:var(--accent);color:#fff}
-.nav-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);border-radius:20px;font-size:12px;font-weight:500}
-.pulse{width:6px;height:6px;background:var(--green);border-radius:50%;animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.35)}}
-.page{max-width:980px;margin:0 auto;padding:28px 24px}
-.page-title{font-size:21px;font-weight:700;letter-spacing:-.4px;margin-bottom:3px}
-.page-sub{color:var(--text2);margin-bottom:24px;font-size:13px}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:14px}
-.card-title{font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);margin-bottom:14px}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:18px}
-.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:15px}
-.stat-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:5px}
-.stat-value{font-size:24px;font-weight:700;letter-spacing:-1px;font-family:'DM Mono',monospace}
-.stat-value.blue{color:var(--accent)}.stat-value.green{color:var(--green)}.stat-value.red{color:var(--red)}.stat-value.amber{color:var(--amber)}
-.table-wrap{overflow-x:auto;border-radius:var(--radius-sm);border:1px solid var(--border)}
-table{width:100%;border-collapse:collapse;font-size:12.5px}
-th{background:var(--surface2);padding:9px 12px;text-align:left;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap}
-td{padding:9px 12px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-size:12px;color:var(--text);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-tr:last-child td{border-bottom:none}
-tr:hover td{background:var(--surface2)}
-.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;font-family:'DM Sans',sans-serif;white-space:nowrap}
-.badge-new{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
-.badge-dup{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
-.badge-info{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
-.badge-email{background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border)}
-.badge-domain{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
-.upload-zone{border:2px dashed var(--border2);border-radius:var(--radius);padding:36px 20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface2)}
-.upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:var(--accent-bg)}
-.upload-icon{font-size:30px;margin-bottom:9px}
-.upload-title{font-weight:600;font-size:15px;margin-bottom:3px}
-.upload-sub{color:var(--text2);font-size:12px}
-.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 15px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;text-decoration:none}
-.btn:hover{background:var(--surface2);border-color:var(--text3)}
-.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
-.btn-primary:hover{background:#1d4ed8}
-.btn-danger{background:var(--red-bg);color:var(--red);border-color:var(--red-border)}
-.btn-danger:hover{background:var(--red);color:#fff}
-.btn-success{background:var(--green-bg);color:var(--green);border-color:var(--green-border)}
-.btn-success:hover{background:var(--green);color:#fff}
-.btn-sm{padding:5px 10px;font-size:12px}
-.btn:disabled{opacity:.4;cursor:not-allowed}
-select,input[type=text]{padding:7px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:13px;background:var(--surface);color:var(--text);outline:none;transition:border .15s}
-select:focus,input:focus{border-color:var(--accent)}
-.notice{padding:11px 15px;border-radius:var(--radius-sm);border:1px solid;font-size:12.5px;margin-bottom:14px;line-height:1.5}
-.notice-info{background:var(--accent-bg);border-color:var(--accent-border);color:#1e40af}
-.notice-warn{background:var(--amber-bg);border-color:var(--amber-border);color:var(--amber)}
-.notice-success{background:var(--green-bg);border-color:var(--green-border);color:var(--green)}
-.flex{display:flex}.items-center{align-items:center}.justify-between{justify-content:space-between}
-.gap-2{gap:8px}.gap-3{gap:12px}.mt-2{margin-top:8px}.mt-3{margin-top:12px}.mb-2{margin-bottom:8px}.mb-3{margin-bottom:12px}
-.text-sm{font-size:12px;color:var(--text2)}
-.empty-state{text-align:center;padding:44px 20px;color:var(--text2)}
-.col-pills{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
-.col-pill{padding:5px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--surface);font-size:12px;cursor:pointer;transition:all .15s;font-family:'DM Mono',monospace}
-.col-pill:hover{border-color:var(--text3)}
-.col-pill.sel-email{background:var(--accent-bg);color:var(--accent);border-color:var(--accent-border)}
-.col-pill.sel-domain{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-border)}
-.col-pill.sel-ignore{background:var(--surface2);color:var(--text3);border-color:var(--border)}
-.col-map-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
-.col-map-row:last-child{border-bottom:none}
-.col-name{font-family:'DM Mono',monospace;font-size:12px;min-width:180px;color:var(--text)}
-.result-tabs{display:flex;gap:7px;margin-bottom:13px;flex-wrap:wrap}
-.result-tab{padding:5px 13px;border-radius:20px;border:1px solid var(--border2);background:var(--surface);color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;transition:all .15s}
-.result-tab.active-new{background:var(--green-bg);color:var(--green);border-color:var(--green-border)}
-.result-tab.active-dup{background:var(--red-bg);color:var(--red);border-color:var(--red-border)}
-.result-tab.active-all{background:var(--accent-bg);color:var(--accent);border-color:var(--accent-border)}
-.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;flex-wrap:wrap;gap:8px}
-.tag{display:inline-block;padding:2px 7px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2)}
-.toast{position:fixed;bottom:22px;right:22px;padding:11px 17px;background:var(--text);color:#fff;border-radius:var(--radius);font-size:13px;font-weight:500;box-shadow:0 4px 14px rgba(0,0,0,.15);z-index:999;animation:slideIn .2s ease}
-@keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.step{display:flex;align-items:flex-start;gap:13px;padding:13px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:9px;background:var(--surface)}
-.step-num{width:27px;height:27px;min-width:27px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
-.step-num.done{background:var(--green)}
-.step-title{font-weight:600;font-size:13.5px;margin-bottom:1px}
-.step-desc{font-size:12px;color:var(--text2)}
-.tab-header{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);padding:6px 12px;background:var(--surface2);border-bottom:1px solid var(--border)}
-.search-input{padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-family:inherit;font-size:13px;width:200px;background:var(--surface);color:var(--text);outline:none}
-.search-input:focus{border-color:var(--accent)}
-.det-row{display:flex;gap:7px;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)}
-.det-row:last-child{border-bottom:none}
-.det-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);min-width:90px}
-.det-val{font-family:'DM Mono',monospace;font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.progress{height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:6px}
-.progress-fill{height:100%;background:var(--red);transition:width .5s}
-@media(max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DupGuard — Duplicate Checker</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.1/papaparse.min.js"></script>
+    <style>
+        .badge-new { background-color: #DEF7EC; color: #03543F; }
+        .badge-dup { background-color: #FDE8E8; color: #9B1C1C; }
+    </style>
 </head>
-<body>
-<div id="root"></div>
-<script>
-const SEED_DOMAINS = ["1057thehawk.com", "10clouds.com", "10kwraps.com", "10magazine.com", "10xdigitalinc.com", "12news.com", "1gbits.com", "1password.com", "1seo.com", "20northmarketing.com", "2tenmarketing.com", "300cbt.com", "3dprintingindustry.com", "3way.social", "42connect.com", "50pros.com", "6clicks.com", "829studios.com", "8bitstudio.com", "8x8.com", "99firms.com", "99rdp.com", "a10networks.com", "a2xaccounting.com", "aaa.com", "abiresearch.com", "ably.com", "abmagency.com", "absolute.digital", "abstractapi.com", "abtasty.com", "acc.com", "accela.com", "accelerance.com", "accessibe.com", "accio.com", "acertusdelivers.com", "adaface.com", "adcellerant.com", "addictivetips.com", "admindagency.com", "adspower.com", "adster.ca", "adswerve.com", "adventuremomblog.com", "adventuremotorcycle.com", "advertisepurple.com", "advisera.com", "aeroleads.com", "agencycreative.com", "agencypartner.com", "agencyplatform.com", "agentimage.com", "agileengine.com", "aicrowd.com", "aigenerator.com", "aihello.com", "aihr.com", "aimarketcap.io", "aioseo.com", "akbizmag.com", "akkio.com", "alexhost.com", "aleydasolis.com", "alliedmarketresearch.com", "alohabrowser.com", "alphabold.com", "alphasoftware.com", "altexsoft.com", "altitudemarketing.com", "alugha.com", "alumio.com", "alura.io", "amaka.com", "amio.io", "amorserv.com", "amperecomputing.com", "ampifire.com", "anrok.com", "anura.io", "anyline.com", "api2cart.com", "aplos.com", "appier.com", "apploye.com", "appmakersla.com", "appnet.com", "appquipo.com", "apps365.com", "appschopper.com", "arashlaw.com", "archimatetool.com", "arival.travel", "armstrongb2b.com", "arqfinance.com", "artemis.marketing", "articulatemarketing.com", "artkai.io", "ask.com", "askmen.com", "asksuite.com", "assetinfinity.com", "astute.co", "ateam-oracle.com", "atiba.com", "atomicdc.com", "atroposdigital.com", "autods.com", "automationworld.com", "automoblog.com", "autopagerank.com", "avalanchegr.com", "avalara.com", "avandatimes.com", "avidonmarketinggroup.com", "awisee.com", "axongarside.com", "axtria.com", "azumuta.com", "b2binpay.com", "b2broker.com", "babylovegrowth.ai", "bandai.com", "bandtheme.com", "banzai.io", "bark.com", "barrons.com", "batterseawebexpert.com", "battleofguardians.com", "baytechconsulting.com", "bazaarvoice.com", "beaconsoft.net", "beaglesecurity.com", "beeksgroup.com", "behindtheshutter.com", "belletire.com", "belvg.com", "berrybyte.net", "besanttechnologies.com", "bestversionmedia.com", "better.net", "betterafter50.com", "betweenthelinescopy.com", "beyondidentity.com", "beyondkey.com", "bigblue.co", "bigdataboutique.com", "bigdatacloud.com", "bighuman.com", "bilgisayarkavramlari.com", "bioinformant.com", "biometricupdate.com", "biospace.com", "bitmedia.io", "bitmovin.com", "bitskingdom.com", "biztechmagazine.com", "blackbaud.com", "blackbeltcommerce.com", "blackduck.com", "blackflagcreative.com", "blackfog.com", "blackhat.com", "blancco.com", "blankabrand.com", "blauwemonsters.nl", "blogseo.ai", "bloomgrowth.com", "bloomhousemarketing.com", "bloomreach.com", "bluebeetle.ae", "blueleaf.com", "blueprintdigital.com", "bluetext.com", "bluevoyant.com", "bluewheelmedia.com", "blueyonder.com", "blurb.com", "blurbusters.com", "bodhost.com", "boldgrid.com", "boldreports.com", "boomcaster.com", "boommarketer.com", "boostability.com", "bootstrappingecommerce.com", "bornsocial.co", "botify.com", "boulderseomarketing.com", "boxchilli.com", "boxcrush.com", "bradfordera.com", "bradfrost.com", "brainhub.eu", "branchleafdigital.com", "brand24.com", "brandbuildersgroup.com", "brandclickx.com", "brandfolder.com", "brandingmarketingagency.com", "breachsense.com", "breaktheweb.agency", "breezechms.com", "bridgestoneamericas.com", "brightlocal.com", "brightpattern.com", "brightspot.com", "brighttalk.com", "brightvessel.com", "broadcom.com", "broadly.com", "brooklynpaper.com", "brownrice.com", "bryanbraun.com", "bsscommerce.com", "btwebgroup.com", "buddyboss.com", "buildbox.com", "builder.io", "builderall.com", "builderdesigns.com", "builtwithdjango.com", "bullseyeinternet.com", "business-software.com", "businessofapps.com", "butlertill.com", "buymeacoffee.com", "buzzclan.com", "byteful.com", "bytes.co", "c2.com", "cablelabs.com", "cactusvpn.com", "caddyserver.com", "cadence.com", "cafemom.com", "cal.com", "calabrio.com", "calcalistech.com", "calcxml.com", "calix.com", "callcenterstudio.com", "callstack.com", "calmdigital.com", "cambiumnetworks.com", "campaignlive.com", "campaignmonitor.com", "camstreamer.com", "caniphish.com", "canonical.com", "canspace.ca", "canto.com", "capillarytech.com", "capterra.com", "carbondesignsystem.com", "carcovers.com", "cardboardconnection.com", "carrieelle.com", "carsome.id", "castr.com", "catalyst2.com", "catchr.io", "cati.com", "cbs-uae.ae", "cdata.com", "cdnetworks.com", "cekindo.com", "celebdirtylaundry.com", "celebratingthesoaps.com", "ceragon.com", "cerberusftp.com", "ceros.com", "ces.tech", "chainstack.com", "chamberofcommerce.com", "chameleon.io", "changeip.com", "channel3000.com", "channele2e.com", "channelfutures.com", "chargedevs.com", "chargeflow.io", "charterglobal.com", "chatbot.com", "chatbotkit.com", "checkiday.com", "checklyhq.com", "chetu.com", "chipchick.com", "cioviews.com", "citationbuilderpro.com", "cleardigital.com", "cleartailmarketing.com", "clearwatersecurity.com", "clepher.com", "cleverfiles.com", "clevertap.com", "clickbank.com", "clickrank.ai", "cloaked.com", "cloud.com", "cloudaware.com", "cloudcall.com", "cloudchipr.com", "cloudficient.com", "cloudflight.io", "cloudi-fi.com", "cloudian.com", "cloudinary.com", "cloudsmith.com", "cloudwars.com", "cloudways.com", "cloudzy.com", "clouvider.com", "clutch.co", "cm.com", "cmitsolutions.com", "cmmiinstitute.com", "cmscritic.com", "cmswire.com", "cncf.io", "cnet.com", "codemag.com", "coderslink.com", "codesigningstore.com", "codeweavers.com", "codility.com", "codio.com", "cogentco.com", "cognex.com", "cognigy.com", "cognite.com", "cohere.com", "cohesity.com", "colorexpertsbd.com", "commercepundit.com", "commoninja.com", "comodo.com", "comparitech.com", "completemusicupdate.com", "concordmonitor.com", "connectpos.com", "consigncloud.com", "constructiondigital.com", "contentful.com", "continentaltire.com", "contractorgorilla.com", "conversion-rate-experts.com", "conversion.ai", "convertapi.com", "convinceandconvert.com", "copado.com", "copilotai.com", "copy.ai", "copyblogger.com", "copyfol.io", "corelight.com", "corellium.com", "coreweave.com", "cornerstoneondemand.com", "corsicatech.com", "corvetteblogger.com", "cottagesgardens.com", "county17.com", "coupa.com", "covasoftware.com", "coveo.com", "coywolf.com", "craftedny.com", "craftercms.com", "craftybase.com", "crainsdetroit.com", "crashplan.com", "crayon.com", "crazyegg.com", "creativemarket.com", "crelate.com", "crestron.com", "crisp.chat", "crm.org", "crn.com", "cronyxdigital.com", "crossbeam.com", "crosstimbersgazette.com", "crowdstrike.com", "csdisco.com", "ctm360.com", "currentware.com", "cursor.com", "customgpt.ai", "cxl.com", "cyberark.com", "cyberdeveloperbd.com", "cybersecurityguide.org", "cycode.com", "cycognito.com", "cyera.com", "cyfuture.com", "cynet.com", "dagmarmarketing.com", "dailycamera.com", "daktela.com", "danacita.co.id", "darktrace.com", "dash0.com", "dashword.com", "dataally.ai", "databricks.com", "datacenterdynamics.com", "datadoghq.com", "dataiku.com", "dataminr.com", "datanorth.ai", "datareportal.com", "datasunrise.com", "dbschema.com", "dbswebsite.com", "ddev.com", "debugbear.com", "decodo.com", "deepgram.com", "deepswapper.com", "default.com", "defensescoop.com", "delinea.com", "deliverback.com", "demandbase.com", "demandsphere.com", "denodo.com", "dentimax.com", "denverwebsitedesigns.com", "deque.com", "descope.com", "design.com", "designindc.com", "designrush.com", "destructoid.com", "detecting-ai.com", "determ.com", "device42.com", "deviceatlas.com", "devoxsoftware.com", "dhis2.org", "dhiwise.com", "dhtmlx.com", "diabatix.com", "diabolocom.com", "dianahost.com", "digi.com", "digicert.com", "digital-coach.com", "digitalagencybangkok.com", "digitalapplied.com", "digitalcameraworld.com", "digitalcommerce360.com", "digitaldesigns1.net", "digitalfarm.ae", "digitallogic.co", "digitalmarketinginstitute.com", "digitalmarketingphilippines.com", "digitalmatter.com", "digitalneighbor.com", "digitalstrike.com", "digitechwebdesignaustin.com", "digivate.com", "digivizer.com", "dilate.com.au", "dimensionmarketresearch.com", "dinorank.com", "dirtfish.com", "discoverwalks.com", "dispatchtrack.com", "displayr.com", "disqus.com", "distillery.com", "divbyzero.com", "dlthub.com", "dmarcadvisor.com", "dmarcian.com", "dmcinfo.com", "dnsfilter.com", "docker.com", "docparser.com", "documo.com", "docupilot.com", "docuseal.com", "docusign.com", "docusketch.com", "docusnap.com", "doit.com", "dokka.com", "dokploy.com", "dolarapp.com", "dolthub.com", "domain.com", "domainnamewire.com", "domainspricedright.com", "domaintools.com", "domo.com", "domotz.com", "donesafe.com", "doppel.com", "dorik.com", "dorksideoftheforce.com", "dotcms.com", "dotcom-monitor.com", "dotdigital.com", "dotmatics.com", "dotsquares.com", "dovetail.com", "draftbit.com", "dragapp.com", "dragzine.com", "drata.com", "draup.com", "dreamfactory.com", "dreenaburton.com", "drip.com", "dripify.com", "dronedeploy.com", "dronedj.com", "dropbox.com", "dropcommerce.com", "droven.io", "druva.com", "dscout.com", "duplocloud.com", "dynamicquest.com", "dynatechconsultancy.com", "eabel.com", "eastsideco.com", "easync.io", "ebayinc.com", "echo-factory.com", "ecombalance.com", "ecomhunt.com", "ecommerce-platforms.com", "ecommercefulfilment.com", "ecommercetech.io", "edn.com", "egochi.com", "el-balad.com", "eleken.co", "elementalnest.com", "elementthree.com", "elevationb2b.com", "elit-web.com", "elitelegalmarketing.com", "elogii.com", "emaillove.com", "emailtooltester.com", "emarketer.com", "emarketerz.fr", "emplifi.io", "encord.com", "engineering.com", "enigmasoftware.com", "entrepreneurindia.com", "envimedia.co", "envisagedigital.co.uk", "envisionitagency.com", "eoncoat.com", "epitaph.com", "eprolo.com", "eqvn.net", "eshopsync.com", "etherfax.net", "eurofiber.com", "eveningtribune.com", "evincedev.com", "evokad.com", "evomi.com", "executivebiz.com", "exigo.com", "experte.com", "expertise.com", "exportyourstore.com", "ezmarketing.com", "fahimai.com", "fakturownia.pl", "famewall.io", "fanbasepress.com", "fantasticit.com", "farotech.com", "fast.io", "fasterize.com", "fdgweb.com", "feedbax.ai", "feedhive.com", "fetcher.ai", "fieldpulse.com", "fieldservicely.com", "figmentagency.com", "finalroundai.com", "financialauditcpa.com", "finoit.com", "fitbottomedgirls.com", "fitnessista.com", "fitnessondemand247.com", "flipboard.com", "flockler.com", "flowbuzz.fr", "fluxbranding.com", "fmgsuite.com", "fmtc.co", "foodal.com", "forgedigitalmarketing.com", "formsite.com", "fortinet.com", "forumone.com", "fosteringfamiliestoday.com", "fotc.com", "foundryco.com", "foundsm.com", "fox2detroit.com", "foxit.com", "foxy.io", "fraud.com", "freemius.com", "freeola.com", "freightwaves.com", "freshbooks.com", "freshysites.com", "frooition.com", "fruitylogic.com", "fueled.com", "fueler.io", "fullscale.io", "fullstory.com", "funio.com", "funnelytics.io", "funwithmama.com", "futuregenapps.com", "futurelearn.com", "fwbchamber.org", "gabb.com", "gamma.app", "gapsystudio.com", "gardenandgun.com", "gatewayapi.com", "gazzettadisiena.it", "gbim.com", "geekflare.com", "geekseller.com", "generaltire.com", "generatepress.com", "genesis.global", "genwords.com", "geomotiv.com", "geotab.com", "geotargetly.com", "getacopywriter.com", "getapp.com", "getastra.com", "getcredo.com", "getflywheel.com", "getmagical.com", "getnerdio.com", "getonbrd.com", "getsafeonline.org", "getvoip.com", "ghostinspector.com", "gigasavvy.com", "gigsalad.com", "gisma.com", "givesmart.com", "glidedesign.com", "globaldata.com", "gmbgorilla.com", "goaffpro.com", "goelastic.com", "gofishdigital.com", "gojilabs.com", "gokenko.com", "goodfirms.co", "gooyaabitemplates.com", "gottman.com", "gr0.com", "grabon.com", "grafana.com", "grahamcluley.com", "grammarbeep.com", "graphicszoo.com", "gravitec.net", "gravityforms.com", "gravitywiz.com", "greenbananaseo.com", "greenevillesun.com", "grkids.com", "guardz.com", "guernicamag.com", "guestpost.com", "gyrus.com", "hackernoon.com", "hackerone.com", "hadrian.io", "haloscan.com", "hamariweb.com", "hashmeta.com", "hatchworks.com", "hatfieldmedia.com", "hauerpower.com", "hawkhost.com", "hawksem.com", "headway.co", "healthyhappylife.com", "helium-seo.com", "hellothematic.com", "hennessey.com", "here.com", "heroesofdigital.com", "heroku.com", "hexdigital.com", "hexlet.io", "hexxen.com", "hidessh.com", "hightouchtechnologies.com", "hiilite.com", "hikeseo.co", "hikeup.com", "hiveage.com", "hivelocity.net", "hobo-web.co.uk", "holdens.agency", "hollyland.com", "hollywoodintoto.com", "homegauge.com", "honestbrandreviews.com", "honeybook.com", "honeykidsasia.com", "hoonigan.com", "horizoniq.com", "hornetsecurity.com", "hostadvice.com", "hostagle.com", "hosted.com", "hostfully.com", "hostingadvice.com", "hostingstep.com", "hostkey.com", "hostwinds.com", "hourly.io", "huboo.com", "hyland.com", "ibaset.com", "ibm.com", "icoda.io", "iconscout.com", "ideamktg.com", "ideasoft.io", "idplr.com", "ifdesign.com", "ifttt.com", "iheartraves.com", "imagekit.io", "imagexmedia.com", "imaginacolombia.com", "imarticus.org", "imcreator.com", "imminentbusiness.com", "impekable.com", "imsa.com", "inboundlogistics.com", "indeemo.com", "independentmail.com", "indexly.ai", "india.com", "infinum.com", "influenceflow.io", "infocubic.co.jp", "infopluscommerce.com", "infront.com", "inmotionmktg.com", "insightglobal.com", "insightssuccessmagazine.com", "instapage.com", "intelusagency.com", "intigriti.com", "invespcro.com", "invideo.io", "ipage.com", "ipserverone.com", "irelandwebsitedesign.com", "ironplane.com", "ishir.com", "isocialweb.agency", "istio.io", "itconvergence.com", "itechtics.com", "itnuthosting.com", "itpro.com", "itseeze.com", "itsm-docs.com", "itxitpro.com", "iubenda.com", "ivaluegroup.com", "ivanti.com", "ivorymix.com", "jadeglobal.com", "jakks.com", "jamieivey.com", "jasminedirectory.com", "jasonbarnard.com", "jasper.ai", "jbtools.com", "jenova.ai", "jessicasepel.com", "jfrog.com", "jlbworks.com", "jobnimbus.com", "journalstandard.com", "joyfoodsunshine.com", "juegostudio.com", "juliemeasures.com", "jumpfly.com", "junia.ai", "junkee.com", "jweiland.net", "kadence.com", "kahoot.com", "kana-konoha.fr", "kartikahuja.com", "kaspersky.com", "kdll.org", "kelleycreate.com", "keywordinsights.ai", "keywordtool.io", "kickserv.com", "kindermusik.com", "kingservers.com", "kjzz.com", "klewtv.com", "klima101.rs", "klintmarketing.com", "klizer.com", "knifewear.com", "knorish.com", "knowband.com", "knue.com", "koa.com", "kodexolabs.com", "kolsquare.com", "konigle.com", "kpic.com", "krausgroupmarketing.com", "krdo.com", "kreative-media.com", "krischislett.com", "ktar.com", "kunocreative.com", "kunr.org", "kurve.co.uk", "kwsmdigital.com", "lairedigital.com", "lambdatest.com", "latevaweb.com", "laughingsquid.com", "leadtoconversion.com", "learndash.com", "learningliftoff.com", "leaseweb.com", "leemediagroup.com", "lemonadestand.org", "leonardagenceweb.com", "levelupleads.io", "levyonline.com", "lianatech.com", "lifewire.com", "lifterlms.com", "lightpdf.com", "lineardesign.com", "linkmybooks.com", "linknow.com", "linko.me", "linuxcapable.com", "linuxfoundation.org", "linxens.com", "lionsroar.com", "liquidweb.com", "litcommerce.com", "litebreeze.com", "litmus.com", "liveabout.com", "liveagent.com", "liveoriginal.com", "livinginyellow.com", "livingmontessorinow.com", "llmrefs.com", "localiq.com", "looktothestars.org", "ltheme.com", "lucid.co", "lunio.ai", "lutforpro.com", "m2ecloud.com", "m5designstudio.com", "machinedesign.com", "macraes.com", "macworld.com", "magicui.design", "magnals.com", "mail-tester.com", "mailconvertertools.com", "mailgun.com", "makdigitaldesign.com", "make.com", "makelifelovely.com", "malwarebytes.com", "managedsolution.com", "manageengine.com", "manektech.com", "manh.com", "manhattanmiami.com", "manning.com", "mapletreemedia.com", "maptiler.com", "marchbranding.com", "markeluk.com", "marketerhire.com", "marketermilk.com", "marketingdive.com", "marketingltb.com", "marketingminer.com", "marketingprofs.com", "marketingweek.com", "marketjoy.com", "marketleader.com", "marketplacer.com", "marketwake.com", "markletic.com", "marstranslation.com", "martal.ca", "martechrecord.com", "marutitech.com", "mashupmath.com", "masterbundles.com", "masterful-marketing.com", "mastodon.cloud", "mattreport.com", "maven.com", "maxapress.com", "mckinsey.com", "mcpservers.org", "mdmarketingdigital.com", "measuringu.com", "mecalux.com", "medallia.com", "medesk.net", "mediagroupww.com", "mediamint.com", "medianama.com", "medicaldesignandoutsourcing.com", "medius.com", "meetdandy.com", "meetglimpse.com", "meetrecord.com", "meetup.com", "melodicmag.com", "meloncube.net", "memberpress.com", "memberstack.com", "mentorcruise.com", "meowapps.com", "merithub.com", "merkle.com", "metabase.com", "metacto.com", "metallica.com", "metricstream.com", "micron.com", "middleweb.com", "midphase.com", "mightynetworks.com", "miguelgrinberg.com", "mile.tech", "milesit.com", "milforddailynews.com", "milled.com", "mimvi.com", "mindbowser.com", "minds.com", "mindtheproduct.com", "miniorange.com", "miniwebtool.com", "miracuves.com", "mist.com", "mitratech.com", "mixpanel.com", "mobile-industrial-robots.com", "mobilemoxie.com", "mobileworldlive.com", "mobiloud.com", "mobulous.com", "modal.com", "mode.com", "modernb2b.co", "moderncat.com", "modo25.com", "mofflylifestylemedia.com", "mollie.com", "momenticmarketing.com", "momentivesoftware.com", "monday.com", "monetizemore.com", "mongodb.com", "monkhouseandcompany.com", "monovm.com", "monsterinsights.com", "montecarlodata.com", "moontechnolabs.com", "mopinion.com", "morty.com", "mpify.com", "mssqltips.com", "mugglenet.com", "multcloud.com", "multiculturalkidblogs.com", "muncheye.com", "munro.agency", "myadvice.com", "myconfinedspace.com", "mydbsync.com", "myfigurecollection.net", "myjobmag.co.ke", "mylifewellloved.com", "myscale.com", "mytotalretail.com", "mywebaudit.com", "name.com", "namify.tech", "nannybag.com", "napervillemagazine.com", "nareshit.com", "nascar.com", "nationalreview.com", "navattic.com", "navigator.ca", "ncratleos.com", "nemovideo.com", "neon.com", "neon.tech", "neosnetworks.com", "netalico.com", "netally.com", "netapp.com", "netboxlabs.com", "netcorecloud.com", "netcraft.com", "netdocuments.com", "netenrich.com", "netlify.com", "netpeak.net", "netscape.com", "netscout.com", "netsolutions.com", "netsuite.com", "nettl.com", "networkworld.com", "netwrix.com", "newcoupons.info", "newline.co", "newmedia.com", "newrelic.com", "newscentermaine.com", "newsletterboxed.com", "newsone.com", "newswirejet.com", "newyorkcityservers.com", "nextdigital.co.id", "nextsmartship.com", "nexustek.com", "nhpr.org", "nice.com", "nicepage.com", "nickiswift.com", "nickjanetakis.com", "niftypm.com", "nilesecure.com", "nintex.com", "nix-united.com", "nixihost.com", "njfamily.com", "nmgtechnologies.com", "nobledesktop.com", "nodemaven.com", "nominus.com", "nomtek.com", "non.agency", "nordlayer.com", "nordpass.com", "nozzle.io", "nplusonemag.com", "nsnewsindia.com", "nubela.co", "nudgify.com", "numerous.ai", "nytroseo.com", "o2btechnologies.com", "oaepublish.com", "octolize.com", "octoparse.com", "odys.global", "off-road.com", "offbeatwed.com", "offerzen.com", "officespacesoftware.com", "olark.com", "ollyolly.com", "oloid.com", "omnigroup.com", "omr.com", "onelogin.com", "onesignal.com", "onesmartsheep.com", "oneupweb.com", "onlinemediamasters.com", "onlineoptimism.com", "onliveserver.com", "onlogic.com", "onrampfunds.com", "ooshirts.com", "oostas.com", "opalinfotech.com", "opc-router.com", "openedr.com", "opensesame.com", "opentext.com", "openvpn.net", "opinionstage.com", "opsiocloud.com", "optimabatteries.com", "optinmonster.com", "optiv.com", "optiva.com", "optixapp.com", "optro.ai", "orbitvu.com", "order.co", "ordoro.com", "organized31.com", "orientation.agency", "otterly.ai", "otterpr.com", "outfy.com", "outgrow.co", "overfuel.com", "oviond.com", "owncloud.com", "ox.security", "oxygenbuilder.com", "p0.dev", "pageoptimizer.pro", "pagetraffic.com", "paiza.io", "palbin.com", "pancommunications.com", "papierdarmenie.fr", "parachutedesign.ca", "paradigmmarketinganddesign.com", "parallelhq.com", "parentingpod.com", "paroledemamans.com", "parsehub.com", "partnershipleaders.com", "passionfru.it", "paulbarrs.com", "paystand.com", "pclub.io", "pcworld.com", "pedowitzgroup.com", "peopleperhour.com", "perforce.com", "performanceracing.com", "petapixel.com", "philips-digital.com", "pingcap.com", "pinnaclecart.com", "pipe.com", "piranha-solutions.com", "planergy.com", "plausible.io", "plusserver.com", "plutio.com", "pocketnow.com", "poddigital.co.uk", "popularmechanics.com", "popwebdesign.net", "portkeyseominneapolis.com", "postman.com", "powermotiontech.com", "powerschool.com", "ppc.io", "ppspy.com", "preemptive.com", "prefacestudios.com", "pressrelease.com", "primeivhydration.com", "printavo.com", "printkk.com", "prismatic.io", "prisync.com", "privacyaffairs.com", "productiveshop.com", "progress-index.com", "progress.com", "prometsource.com", "prontomarketing.com", "proofpoint.com", "prosperops.com", "protecto.ai", "proxy-seller.com", "proxyscrape.com", "publicadagency.com", "publishpress.com", "punchkorea.com", "pxp.io", "pynetlabs.com", "qatestlab.com", "quadcubes.com", "qualitestgroup.com", "quantumdigital.com", "quantumitinnovation.com", "quantvps.com", "quartsoft.com", "qubstudio.com", "quillpodcasting.com", "quinnox.com", "quirkydigital.com", "racer.com", "racerxonline.com", "rainpos.com", "randomhousebooks.com", "rankranger.com", "rankvisely.com", "rankworks.com", "rankyak.com", "rapidseo.london", "rapidsslonline.com", "rdparena.com", "rdr-it.com", "readdy.ai", "readwrite.com", "realestatewebmasters.com", "rebekahreadcreative.com", "rebootonline.com", "rebrandly.com", "recruitee.com", "red-gate.com", "redsharknews.com", "refuelagency.com", "relayfi.com", "relianoid.com", "req.co", "researchfdi.com", "resolvepay.com", "retailcustomerexperience.com", "retailtouchpoints.com", "retently.com", "revenera.com", "revenuehero.io", "revistaseguridad360.com", "revolutionehr.com", "revoyant.com", "riseuplabs.com", "rishabhsoft.com", "rivaldigital.com", "rivalmind.com", "rivery.io", "roadandtrack.com", "roadracingworld.com", "roadrunner.travel", "roadsandkingdoms.com", "rock.so", "rocket.chat", "rocketmatter.com", "rogerebert.com", "rohitkumarseo.com", "ronitbaras.com", "roomandboard.com", "rows.com", "roxybrowser.com", "rsgonzales.com", "rss.com", "rsvpify.com", "runonflux.com", "rush-analytics.com", "rvlife.com", "rynoss.com", "s-pro.io", "sagacitysolutions.co.uk", "salesduo.com", "salesforce.com", "salesken.ai", "sanishtech.com", "sapphiresolutions.net", "sayenkodesign.com", "sba.gov", "scaleuptech.com", "schneier.com", "scienceleadership.org", "scopicsoftware.com", "scoreapps.com", "scribbl.co", "seafoammedia.com", "seamgen.com", "searchbloom.com", "searchenginejournal.com", "searchpilot.com", "searchrank.com", "searchseo.io", "searchxpro.com", "secureblitz.com", "securiti.ai", "security.org", "securitymagazine.com", "sedo.com", "sekel.tech", "sellbrite.com", "sellerchamp.com", "sender.net", "seniormarketsales.com", "sentinelcolorado.com", "seo.domains", "seoclarity.net", "seoexpertscompanyindia.com", "seologist.com", "seoplus.com", "seosly.com", "seota.com", "seotuners.com", "seowind.io", "seozoom.com", "seranking.com", "serpact.com", "serpwatch.io", "serverion.com", "servermania.com", "sevenfigureagency.com", "sgvtribune.com", "shakuro.com", "sharpguyswebdesign.com", "shipfusion.com", "shipwise.com", "shopscan.app", "shorefire.com", "shortpixel.com", "shotstack.io", "shoutmeloud.com", "sidehustleschool.com", "sievo.com", "silverbackstrategies.com", "simpalm.com", "simpleseogroup.com", "simpletire.com", "simplifiedseoconsulting.com", "simplilearn.com", "simvoly.com", "singlegrain.com", "sirvoy.com", "site24x7.com", "siteminder.com", "sitesgpt.com", "skeepers.io", "skuiq.com", "skypostal.com", "slashdot.org", "slateteams.com", "sliderrevolution.com", "slideshare.net", "smallest.ai", "smallseotools.com", "smartblogger.com", "smartbrief.com", "smartinsights.com", "smartlook.com", "smartsites.com", "smbteam.com", "smmfollows.com", "snapnames.com", "soapdirt.com", "soarpay.com", "soci.ai", "sociabble.com", "socialboosting.com", "socialpilot.co", "socialrails.com", "sociummedia.com", "softnep.com", "softonic.com", "softwebsolutions.com", "sol8.com", "solarpowerworldonline.com", "solidwp.com", "soltech.net", "sonary.com", "sonicscoop.com", "southstreetmarketing.com", "spaceotechnologies.com", "sparkservices.net", "sparxitsolutions.com", "spd.tech", "spectrum.com", "speedwaymedia.com", "sphereagency.com", "spherewms.com", "spinnakersupport.com", "splunk.com", "splurgemedia.com", "spoton.com", "sprinklr.com", "sproutbox.co", "sproutsocial.com", "sproutworth.com", "spurnow.com", "spyro-soft.com", "squareboat.com", "ssldragon.com", "stablehost.com", "stacksocial.com", "stan.store", "stanceworks.com", "startlandnews.com", "stateofdigitalpublishing.com", "statescoop.com", "stellarcontent.com", "stickearn.com", "storageunitsoftware.com", "stormbrain.com", "straightnorth.com", "streamcreative.com", "stripe.com", "strongdm.com", "stukent.com", "stylefactoryproductions.com", "subframe.com", "submitshop.com", "successcoaching.co", "suffescom.com", "supermetrics.com", "supplychainbrain.com", "supplychaindive.com", "surfshark.com", "survivalblog.com", "sushiroyal.fr", "swagger.io", "sweatpantsagency.com", "swissmadesoftware.org", "swktech.com", "swmansion.com", "synopsys.com", "synoptek.com", "sysinfotools.com", "t5datacenters.com", "tability.io", "tagdiv.com", "tagembed.com", "taggmagazine.com", "tagteamdesign.com", "talkwalker.com", "taptwicedigital.com", "targetmarket.com", "tarhely.eu", "tasjeel.ae", "taskade.com", "tbhcreative.com", "tblocks.com", "tbs-marketing.com", "techafricanews.com", "techgenies.com", "techmagic.co", "technbrains.com", "technologyadvice.com", "technologyevaluation.com", "technosidd.com", "techpullers.com", "techradar.com", "techtarget.com", "techuk.org", "tecla.io", "teeinblue.com", "tekrevol.com", "telarus.com", "teletype.in", "tempemarketplace.com", "templatemonster.com", "tempo.io", "tenfold-security.com", "testfort.com", "testmatick.com", "texasmonthly.com", "textellent.com", "textus.com", "tgnns.com", "the-leaky-cauldron.org", "the215guys.com", "theadfirm.net", "theadminbar.com", "thealternativeboard.com", "theashleysrealityroundup.com", "theawl.com", "thebranx.com", "thecatholicspirit.com", "thecurvyfashionista.com", "thedailyjournal.com", "thedesigninspiration.com", "theemailmarketers.com", "thefashionspot.com", "thegamer.com", "thehackernews.com", "theinfluenceagency.com", "theinterngroup.com", "themanifest.com", "themediacaptain.com", "themeignite.com", "themeisle.com", "themeton.com", "themewagon.com", "themindstudios.com", "themodernfirm.com", "themotherchic.com", "thenewyorkwebsitedesigner.com", "thenextweb.com", "thenorthwestern.com", "theplanetsoft.com", "theplusaddons.com", "theregister.com", "theseatco.com", "thesis.agency", "thesixthaxis.com", "thestudio.com", "thesunpapers.com", "thetimesnews.com", "theuxda.com", "thewritersforhire.com", "thirdmarblemarketing.com", "threatintelligence.com", "thriftyniftymommy.com", "thriveagency.com", "thundertech.com", "time4vps.com", "timesofai.com", "timetoreply.com", "timetrex.com", "timg.com", "tinuiti.com", "tinybeans.com", "tinyfrog.com", "titanapps.io", "tmdhosting.com", "tmdmktg.com", "tmnews.com", "todaysveterinarybusiness.com", "tomandlorenzo.com", "tomsguide.com", "top-garage-classic.fr", "top10.com", "topcontent.com", "topleftdesign.com", "topseos.com", "tourismmarketing.agency", "towardsdatascience.com", "trafficguard.ai", "trail4runner.com", "traqq.com", "travelplannersinternational.com", "tresipunt.com", "trevorfox.com", "tribeza.com", "triggerbee.com", "trimech.com", "troyerwebsites.com", "truckerpath.com", "truehost.com", "truenorthsocial.com", "trustindex.io", "tryrdp.com", "tssbulletproof.com", "ttms.com", "tuffgrowth.com", "tuffy.com", "tun.com", "tunein.com", "turo.com", "tutorbird.com", "tvinsider.com", "tvnewscheck.com", "tweaktown.com", "twooctobers.com", "uberall.com", "ucertify.com", "ueni.com", "uforocks.com", "ui8.net", "ulam.io", "ultahost.com", "ultimatemotorcycling.com", "undetectable.io", "unicornplatform.com", "unicsoft.com", "unigreet.com", "unionrayo.com", "unitedseo.ae", "universe.com", "unixhost.pro", "unlimitedgb.com", "uprite.com", "uproer.com", "upseller.com", "upwork.com", "urbanelement.com", "urbanpro.com", "usenix.org", "useproof.com", "uservoice.com", "utho.com", "v0.app", "valerie-legrand-avocat.fr", "valuelabs.com", "vandanayellowpages.com", "vaultinum.com", "vegaswebsitedesigns.com", "velmie.com", "vendelux.com", "venveo.com", "vercel.com", "versacreative.com", "verzdesign.com", "vg247.com", "vib.tech", "vinsys.com", "vioc.com", "vipmarketing.com", "virtualpbx.com", "visualping.io", "vividcreative.com", "vlinkinfo.com", "voice.ai", "vonage.com", "vouchercloud.com", "voxfor.com", "voyagedallas.com", "vpnmentor.com", "vpnpro.com", "vsys.host", "vulcanpost.com", "vxt.ai", "wamc.org", "wanderlog.com", "wappalyzer.com", "wardsauto.com", "warmies.com", "watchguard.com", "wausaudailyherald.com", "wave.video", "wd-strategies.com", "wd40.com", "wdiy.org", "weandthecolor.com", "wearearise.com", "wearesparks.com", "wearetenet.com", "wearetg.com", "web20ranker.com", "webbeeglobal.com", "webfor.com", "webgility.com", "webhelpagency.com", "webhero.com", "webhosting.uk.com", "webmarketing-conseil.fr", "webnames.ca", "weboost.com", "website.com", "websiteclosers.com", "websitemagazine.com", "websiteplanet.com", "webstarts.com", "webz.io", "weidert.com", "weinbergerlawgroup.com", "wellpower.org", "wellsky.com", "welocalize.com", "wesupplylabs.com", "wezom.com", "whatcms.org", "whatwpthemeisthat.com", "whenavailable.com", "whitelabelcoders.com", "whitepress.com", "whop.com", "wideo.co", "wildbrain.com", "williamsmedia.co", "wincher.com", "winwithoptimal.com", "wixmediagroup.com", "wizishop.com", "wlns.com", "wolfpackadvising.com", "womansworld.com", "wordbank.com", "wordstream.com", "work-management.org", "worksuite.com", "workyard.com", "wotnot.io", "wow24-7.com", "wpastra.com", "wpconfigurator.com", "wpdean.com", "wpfusion.com", "wployalty.net", "wpmudev.com", "wpromote.com", "wpshout.com", "wpslimseo.com", "wscubetech.com", "wubbanub.com", "wunc.org", "wwltv.com", "wyzowl.com", "xara.com", "xavor.com", "xcitium.com", "xebia.com", "xendoo.com", "xero.com", "xtom.com", "xygeni.io", "yaguara.co", "yankodesign.com", "yardi.com", "ybox.vn", "yelomarketing.com", "yesandagency.com", "yoast.com", "yotpo.com", "yourmembership.com", "yournextshoes.com", "youtechagency.com", "zamp.com", "zavify.co.uk", "zentail.com", "zetaglobal.com", "ziffity.com", "zimperium.com", "zippia.com", "ziprecruiter.com", "zoolatech.com"];
-const SEED_EMAILS = ["20brand@cta.tech", "20northanalytics@gmail.com", "20pr@billtrust.com", "360@kahoot.com", "aaditya@revenuehero.io", "abby.smith@krdo.com", "abby@themotherchic.com", "abbygail@irelandwebsitedesign.com", "abuse@aweber.com", "abuse@freeola.co.uk", "abuse@namify.tech", "accessibility@learndash.com", "accounting@emarketer.com", "adam@blankabrand.com", "adam@meetglimpse.com", "adam@nemovideo.com", "adam@oostas.com", "adamsdavis@bfusa.com", "adi@ecommerce-platforms.com", "adinfo@sentinelcolorado.com", "admanager@grkids.com", "admin.digital@townsquaredigital.com", "admin@autopagerank.com", "admin@dotsquares.com", "admin@droven.io", "admin@gooyaabitemplates.com", "admin@hidessh.com", "admin@infopluscommerce.com", "admin@ivorymix.com", "admin@ltheme.com", "admin@meloncube.net", "admin@mg.whatcms.org", "admin@mlrpmedia.com", "admin@networkustad.com", "admin@nodemaven.com", "admin@paulbarrs.com", "admin@rabbiitfirm.com", "admin@simplifiedseoconsulting.com", "admin@sitesgpt.com", "admin@softnep.com", "admin@tvinsider.com", "admin@ucreative.com", "ads@nplusonemag.com", "advertise@mofflymedia.com", "advertise@performanceracing.com", "advertise@theawl.com", "advertisers@adnimation.com", "advertising@blurbusters.com", "advertising@candg.com", "advertising@ebertdigital.com", "advertising@emarketer.com", "advertising@evolvemediallc.com", "advertising@hamariweb.com", "advertising@junkeemedia.com", "advertising@lionsroar.com", "advertising@petapixel.com", "advertising@roadrunner.travel", "advertising@sbgtv.com", "advertising@soapdirt.com", "advertising@speedwaymedia.com", "advertising@webhosting.uk.com", "afahlberg@nationalreview.com", "affiliates@hostadvice.com", "agiliberto@flexera.com", "aguerriero@manhattanmiami.com", "agus@nextdigital.co.id", "ahmed.amr@qeema.net", "ahoy@blackflagcreative.com", "aidan@newcoupons.info", "aiswariya@techpullers.com", "alberto.manassero@rows.com", "ales@retently.com", "alex.cardenas@druva.com", "alex.whitelock@futurenet.com", "alex.z@unicsoft.com", "alex@gravityforms.com", "alexandra@hostingadvice.com", "alexis@wellpower.org", "alfonsus@danacita.co.id", "algerj@bnpmedia.com", "alicja.mekarska@brand24.com", "alina@tagdiv.com", "alissa@behindtheshutter.com", "alix.blackburn@futurenet.com", "alkidblogs@gmail.com", "alyssa.l.rodriguez@bakertilly.com", "amanda@agencypartner.com", "amanda@honeykidsasia.com", "amber@grkids.com", "america@nettl.com", "amit@rock.so", "amy.barczy@crain.com", "amy.travis@campaignusonline.com", "an@blueyonder.com", "anastasia@bitmedia.io", "andrea@thenewyorkwebsitedesigner.com", "andreas@carsome.id", "andrew@successcoaching.co", "andy@keywordinsights.ai", "angela.gabriel@biospace.com", "anibal@townsquaremedia.com", "anita.hamilton@barrons.com", "ann\\_bednarz@foundryco.com", "anna.roschek@planit.legal", "annek@noanswer.org", "answerdesk@sba.gov", "anthony@mashupmath.com", "appfeedback@tegna.com", "apps@ui8.net", "aprillia@stickearn.com", "aproninska@tailorsgroup.pl", "apt@spyro-soft.com", "arai@infocubic.co.jp", "aric.manion@kelleycreate.com", "ariel@offbeatempire.com", "arjun.narayan@salesduo.com", "arnau@isocialweb.agency", "arsenal@blackhat.com", "art@popwebdesign.net", "asap@sproutbox.co", "asdf@qwerty.com", "ashley.battle@venveo.com", "ask.middleweb@gmail.com", "ask@bejamas.io", "asktheexpert@parentingpod.com", "asma.a@proxyscrape.com", "auravramz77@gmail.com", "austin@startlandnews.com", "awards@statescoop.com", "b2b@awisee.com", "balk@theawl.com", "barbra@fanbasepress.com", "baytree@primeivhydration.com", "bbraun7@gmail.com", "beata.sumera@boldare.com", "begin@versacreative.com", "bekah@rebekahreadcreative.com", "belletirecares@belletire.com", "ben@getflywheel.com", "ben@interviewsidekick.com", "ben@towardsdatascience.com", "beratung@plusserver.com", "bethany@digitalfarm.ae", "bhadresh@theplanetsoft.com", "bikshita.bhattacharyya@marutitech.com", "bill\\_rigby@foundryco.com", "bitsy@bitdefender.com", "blackducksoftware@gmail.com", "bluesky@bradfrost.bsky.social", "bob.keaveney@manifest.com", "bogdan@wpdean.com", "bollila@1seo.com", "boundsa@dailycamera.com", "bpnewsroom@schnepsmedia.com", "bradfordera@gmail.com", "brandon.arnold@krdo.com", "brandon.cooper@hiilite.com", "brazil@whitepress.com", "brian@copyblogger.com", "brigita.zvikart@determ.com", "brittany@thewritersforhire.com", "bruce@arival.travel", "bruce@researchfdi.com", "bryan@linkbuilder.io", "business.rahulydv@gmail.com", "business@undetectable.io", "bwright@ionedigital.com", "caitlin.hall@conti-na.com", "carbon@us.ibm.com", "care@egochi.com", "care@hostagle.com", "careers@agileengine.com", "careers@blend.com", "careers@cogentco.com", "careers@holdens.agency", "carolyn@vib.tech", "carrie@carrieelle.com", "cbell@akbizmag.com", "cc.standard.support@digicert.com", "ccousins@solidwp.com", "cecil.helton@valvoline.com", "ceo@articulatemarketing.com", "chandan.reddy@capillarytech.com", "chappin.everett@krdo.com", "charity@wubbanub.com", "charlie@poddigital.co.uk", "charlotte.pinckney@insightglobal.com", "checkiday@checkiday.com", "cheers@theadminbar.com", "chengt@myscale.com", "chinasales@azul.com", "choire@theawl.com", "chris.george@futurenet.com", "chris.lucas@netscout.com", "chris@cybersecurityguide.org", "chris@pclub.io", "christine.crowe@boreal-is.com", "circulation@dailycamera.com", "circulation@eveningtribune.com", "citra.oktaviani@cekindo.com", "citrixvoc@cloud.com", "ck@geekflare.com", "classified@thetimesnews.com", "claurelle@pipe.com", "cleo@10fold.com", "clinton@rainpos.com", "cmenz@paradigmmarketinganddesign.com", "collabs@livinginyellow.com", "comments.kurtz@nationalreview.com", "comments@scng.com", "commercial-pdm@reworldmedia.com", "comms@dhis2.org", "communications@plusserver.com", "community@back4app.com", "community@cohesity.com", "compliance@actuatemedia.com", "compliance@mixpanel.com", "compliance@sentry.io", "concierge@honeybook.com", "concierge@indeemo.com", "conference@blackbaud.com", "conference@thenextweb.com", "connect@12news.com", "connect@axtria.com", "connect@gottman.com", "connect@yesandagency.com", "connected@mattreport.com", "consumers@jakks.net", "contact-us@uberall.com", "contact.codebuss@gmail.com", "contact@a2xaccounting.com", "contact@abondance.com", "contact@abstractapi.com", "contact@abtasty.com", "contact@adswerve.com", "contact@azumuta.com", "contact@batterseawebexpert.com", "contact@beaconsoft.net", "contact@bentoml.com", "contact@beyondkey.com", "contact@bigdataboutique.com", "contact@bluevoyant.com", "contact@boostability.com", "contact@broadly.com", "contact@bytes.co", "contact@chainstack.com", "contact@chatbotkit.com", "contact@commoninja.com", "contact@coupa.com", "contact@coywolf.com", "contact@deepswapper.com", "contact@digitalneighbor.com", "contact@dokploy.com", "contact@dragzine.com", "contact@dronedj.com", "contact@emarketerz.fr", "contact@exportyourstore.com", "contact@famewall.io", "contact@fansided.com", "contact@fitbottomedgirls.com", "contact@funio.com", "contact@gardenandgun.com", "contact@gdprlocal.com", "contact@getvoip.com", "contact@gr0.com", "contact@grabon.com", "contact@haloscan.com", "contact@hashmeta.com", "contact@hobo-web.co.uk", "contact@howtogeek.com", "contact@idplr.com", "contact@itechtics.org", "contact@itseeze.com", "contact@itxitpro.com", "contact@jenova.ai", "contact@junia.ai", "contact@kadence.com", "contact@kana-konoha.fr", "contact@kodexolabs.com", "contact@leonardagenceweb.com", "contact@linko.me", "contact@linuxcapable.com", "contact@liveabout.com", "contact@loomly.com", "contact@lunchboxbunch.com", "contact@marketerhire.com", "contact@mcpservers.org", "contact@mindbowser.com", "contact@namify.tech", "contact@nomtek.com", "contact@oizom.com", "contact@ox.security", "contact@postach.io", "contact@privacyaffairs.com", "contact@privacyprotect.org", "contact@provideocoalition.com", "contact@qa-testlab.com", "contact@rivery.io", "contact@rocket.chat", "contact@ruralhillfarm.com", "contact@searchpilot.com", "contact@searchseo.io", "contact@sedo.com", "contact@shopscan.app", "contact@sievo.com", "contact@simpalm.com", "contact@simvoly.com", "contact@smartdev.com", "contact@smartsites.com", "contact@smmfollows.com", "contact@socialrails.com", "contact@sushiroyal.fr", "contact@swissmadesoftware.org", "contact@swmansion.com", "contact@technbrains.com", "contact@teeinblue.com", "contact@testmatick.com", "contact@timesofai.com", "contact@top-garage-classic.fr", "contact@tssbulletproof.com", "contact@tsuki-board.net", "contact@ulam.io", "contact@valerie-legrand-avocat.fr", "contact@vaultinum.com", "contact@vg247.com", "contact@warmies.com", "contact@weidert.com", "contact@wizishop.com", "contact@wpmudev.com", "contacte@tresipunt.com", "contacto@tusclicks.com", "contacto@unavidaonline.com", "contacto@unionrayo.com", "contactsales@pinnaclecart.com", "contactus-cn@appier.com", "contactus@hyland.com", "contactus@moontechnolabs.com", "contactus@thealternativeboard.com", "contactus@valuelabs.com", "contactus@weinbergerlawgroup.com", "contactus@ziffity.com", "contato@eficazmarketing.com", "content@evolvemediallc.com", "convert@invesp.com", "copyright@americanprogress.org", "corp-pr@synopsys.com", "corpcomms@cyberark.com", "corporate@nobledesktop.com", "craig@foundsm.com", "crnt@fnkir.com", "cs@ipserverone.com", "cs\\_escalations@nascar.com", "ctechcalcalist@gmail.com", "cus@bleepingcomputer.com", "customercare@cyera.io", "customerservice@logomaker.com", "customerservice@magnals.com", "customersuccess@globaldata.com", "customersupportuk@web.com", "custserv@alphasoftware.com", "cuteadam@nemovideo.com", "d.shcherbatyi@gravitec.net", "daniela.gandolfo@pxp.io", "data-privacy@greatcontent.com", "data.protection@mecalux.com", "dataprivacy@adcellerant.com", "dataprivacyoffice@convergetp.com", "dataprotection@canonical.com", "dataprotection@foundryco.com", "dataprotection@neosnetworks.com", "david.hajek@daktela.com", "david.jackson@topseos.com", "david.kinchen@fox.com", "david@litebreeze.com", "david@wpshout.com", "dayna@fwbchamber.org", "dd@digitaldesigns1.net", "deals@masterbundles.com", "dearww@womansworldmag.com", "debchitwood@livingmontessorinow.com", "debra@masterful-marketing.com", "deen@ultahost.com", "delight@netcorecloud.com", "delivery@mypapertoday.com", "derek@morty.com", "desk@support.userway.org", "dgoel@manh.com", "dhawkins@testfort.com", "digital.logic.services@gmail.com", "digital@shorefire.com", "digitalcamera@futurenet.com", "djlocalnews@thedailyjournal.com", "dkershaw@newscheckmedia.com", "dmcaagent@voyagela.com", "dmitri.b@martal.ca", "dmitry.golovanov@supermetrics.com", "dom@monkhouseandcompany.com", "domain@hostagle.com", "dotdigital@almastrategic.com", "doug@nichesiteproject.com", "dpo@condenast.com", "dpo@infinum.com", "dpo@merkle.com", "dpo@opentext.com", "dpo@sinch.com", "dpo@sopro.io", "dpo@strongdm.com", "dpo\\_eu@trendmicro.com", "ebayinc@ebay.com", "editor@avandatimes.com", "editor@betterafter50.com", "editor@constructiondigital.com", "editor@inboundlogistics.com", "editor@looktothestars.org", "editor@mindtheproduct.com", "editor@mobileworldlive.com", "editor@mofflymedia.com", "editor@njfamily.com", "editor@nsnewsindia.com", "editor@parentingpod.com", "editor@redsharknews.com", "editor@retailcustomerexperience.com", "editor@survivalblog.com", "editor@tribeza.com", "editorial@gardenandgun.com", "editorial@inboundlogistics.com", "editorial@makeitbetter.com", "editorial@pocketnow.com", "editorial@pokde.net", "editorial@thegamer.com", "editors@automationworld.com", "editors@electronicdesign.com", "editors@engineering.com", "editors@guernicamag.com", "editors@machinedesign.com", "editors@nationalreview.com", "editors@nplusonemag.com", "editors@supplychainbrain.com", "egarrett@bonneville.com", "elisa@feedbax.de", "emre.sayin@fraud.com", "enclosure@eabel.com", "enquiry@dimensionmarketresearch.com", "eric.mueller@ask.com", "eric@slateteams.com", "erika@tuffy.com", "essentials@copado.com", "ethics@barco.com", "eval@site24x7.com", "fabulaes2@gmail.com", "facebook@hightechdad.com", "fahim@fahimai.com", "fakturownia@fakturownia.pl", "fantzc@dailycamera.com", "fcoady@seotuners.com", "federal@coreweave.com", "fedlegislation@timg.com", "feedback@koa.net", "feedback@learningliftoff.com", "feedback@slashdot.org", "feedback@yournextshoes.com", "finance@odys.global", "fjournalstandardobits@gannett.com", "flori@thewritersforhire.com", "flowbuzz.fr@gmail.com", "forum@webmastersun.com", "freddie@liveoriginal.com", "friends@stanwith.me", "funwithmama@gmail.com", "gabriel.pinchev@fieldpulse.com", "geelen.narra@blancco.com", "generalinquiries@foodal.com", "george@bestversionmedia.com", "getstarted@drata.com", "gg@alugha.com", "gianluca@designrush.com", "gina@fitnessista.com", "giorgia@digital-coach.com", "govops@seamgen.com", "gpdr@rejoiner.com", "grievances@medianama.com", "grow@hexxen.com", "gz@deliverback.com", "hari@boomcaster.com", "harmeet@quantumitinnovation.com", "hashik.haneefa@cbs-uae.ae", "hassan@zavify.co.uk", "hello@10clouds.com", "hello@3way.social", "hello@50pros.com", "hello@6clicks.com", "hello@ably.com", "hello@aicrowd.com", "hello@anyline.com", "hello@appnet.com", "hello@armstrongb2b.com", "hello@artk.ai", "hello@astute.co", "hello@b12.io", "hello@babylovegrowth.ai", "hello@betterstack.com", "hello@bitskingdom.com", "hello@bitwarden.com", "hello@bluebeetle.me", "hello@bossproject.com", "hello@botify.com", "hello@brainhub.eu", "hello@brandfolder.com", "hello@breaktheweb.org", "hello@btwebgroup.com", "hello@callstack.com", "hello@castr.io", "hello@chrisguillebeau.com", "hello@clepher.com", "hello@cloudsmith.io", "hello@clutch.co", "hello@covasoftware.com", "hello@craftedny.com", "hello@customgpt.ai", "hello@cycognito.com", "hello@defensescoop.com", "hello@demandsphere.com", "hello@diabolocom.com", "hello@digivate.com", "hello@dnsfilter.com", "hello@documo.com", "hello@donesafe.com", "hello@dronedeploy.com", "hello@elevenwriting.com", "hello@emaillove.com", "hello@evomi.com", "hello@ewdi.org", "hello@ezmarketing.com", "hello@fantasticit.com", "hello@foxy.io", "hello@getcredo.com", "hello@getmagical.com", "hello@getnerdio.com", "hello@gofishdigital.com", "hello@hashicorp.com", "hello@hexdigital.com", "hello@honestbrandreviews.com", "hello@honeykidsasia.com", "hello@ideasoft.io", "hello@imagexmedia.com", "hello@indexly.ai", "hello@junkeemedia.com", "hello@keywordtool.io", "hello@kimgarst.com", "hello@krischislett.com", "hello@litmus.com", "hello@livinginyellow.com", "hello@llmrefs.com", "hello@lunio.ai", "hello@magicui.design", "hello@mapletreemedia.com", "hello@marchbranding.com", "hello@marketjoy.com", "hello@marketwake.com", "hello@metabase.com", "hello@metacto.com", "hello@mpify.com", "hello@munro.agency", "hello@namelesspresents.com", "hello@navigator.ca", "hello@netenrich.com", "hello@non.agency", "hello@ollyolly.com", "hello@omr.com", "hello@onecorepartners.com", "hello@orientation.agency", "hello@otterly.ai", "hello@oviond.com", "hello@palbin.com", "hello@parachutedesign.ca", "hello@parallelhq.com", "hello@penji.co", "hello@plausible.io", "hello@plutio.com", "hello@prosperops.com", "hello@pynetlabs.com", "hello@quirkydigital.com", "hello@rebootonline.com", "hello@rsgonzales.com", "hello@salesduo.com", "hello@scaleuptech.com", "hello@searchbloom.com", "hello@shakuro.com", "hello@slateteams.com", "hello@socialbee.com", "hello@sociummedia.com", "hello@southstreetmarketing.com", "hello@squaredup.com", "hello@startuphub.ai", "hello@stormbrain.com", "hello@swipefile.com", "hello@targetmarket.com", "hello@techmagic.co", "hello@the215guys.com", "hello@themanifest.com", "hello@themindstudios.com", "hello@tinuiti.com", "hello@tourismmarketing.agency", "hello@utho.com", "hello@vegaswebsitedesigns.com", "hello@velmie.com", "hello@vipmarketing.com", "hello@visualping.io", "hello@vouchercloud.com", "hello@wappalyzer.com", "hello@wappalyzer.com,", "hello@wearearise.com", "hello@wearesparks.com", "hello@website.com", "hello@wincher.com", "hello@wordbank.com", "hello@workyard.com", "hello@wotnot.io", "hello@wpbuffs.com", "hello@www.uforocks.com", "hello@yaguara.co", "hello@youtechagency.com", "help@alliedmarketresearch.com", "help@arqfinance.com", "help@bloomgrowth.com", "help@cleverfiles.com", "help@codio.com", "help@craftybase.com", "help@dhiwise.com", "help@discoverwalks.com", "help@draftbit.com", "help@dscout.com", "help@gigsalad.com", "help@gmbgorilla.com", "help@indiegogo.com", "help@kurve.co.uk", "help@mightynetworks.com", "help@nudgify.com", "help@protecto.ai", "help@publishpress.com", "help@seranking.com", "help@sharpguyswebdesign.com", "help@ueni.com", "helpdesk@opensesame.com", "heroku-abuse@salesforce.com", "hey@jasper.ai", "hi@atroposdigital.com", "hi@bluetext.com", "hi@cursor.com", "hi@eprolo.com", "hi@forgedigitalmarketing.com", "hi@kartikahuja.com", "hi@marketermilk.com", "hi@odys.global", "hi@readdy.ai", "hi@s-pro.io", "hi@squareboat.com", "hi@vulcanpost.com", "hobaongoc240@gmail.com", "howdy@thundertech.com", "hp@crank.dyno", "hrgroup@netdocuments.com", "hugh@macraes.com", "hyeonsuk@punchkorea.com", "idea@suffescom.co", "ignite@prometsource.com", "iletisim@bilgisayarkavramlari.com", "info-anz@cognigy.com", "info-sales-asia@futureelectronics.com", "info.ar@base.com", "info.canada@vlinkinfo.com", "info.india@vlinkinfo.com", "info.indonesia@vlinkinfo.com", "info.usa@juegostudio.com", "info.usa@medius.com", "info@10magazine.com", "info@10xdigitalinc.com", "info@3dprintingindustry.com", "info@42connect.com", "info@829llc.com", "info@8bitstudio.com", "info@academialatamdigital.com", "info@accelerance.com", "info@acertusdelivers.com", "info@acme.com", "info@act-on.com", "info@adster.ca", "info@adventuremotorcycle.com", "info@advertisepurple.com", "info@agencycreative.com", "info@agencyjet.com", "info@agentimage.com", "info@aihello.com", "info@aihr.com", "info@aimarketcap.io", "info@alphabold.com", "info@altitudemarketing.com", "info@amorserv.com", "info@amperecomputing.com", "info@apppromotionsummit.com", "info@appquipo.com", "info@arashlaw.com", "info@archimatetool.com", "info@atiba.com", "info@auth0.com", "info@avidonmarketinggroup.com", "info@axongarside.com", "info@backlinkexplore.com", "info@baculasystems.com", "info@baramundi.com", "info@barracuda.com", "info@basis.com", "info@basware.com", "info@beaglesecurity.com", "info@beamery.com", "info@behindtheshutter.com", "info@beinfosys.com", "info@benchmarkemail.io", "info@besanttechnologies.com", "info@bestversionmedia.com", "info@betterafter50.com", "info@beyondtrust.com", "info@bibliocommons.com", "info@biocatch.com", "info@bioinformant.com", "info@bismart.com", "info@bitrix24.com", "info@bizzdesign.nl", "info@blackfog.com", "info@blendb2b.com", "info@bloomhousemarketing.com", "info@bloomreach.com", "info@blueprintdigital.com", "info@bluewheelmedia.com", "info@boardintelligence.com", "info@bootstrappingecommerce.com", "info@boulderseomarketing.com", "info@boxcrush.com", "info@branchleafdigital.com", "info@brandbuildersgroup.com", "info@brandingmarketingagency.com", "info@breachsense.com", "info@brightspot.com", "info@buddyboss.com", "info@builderdesigns.com", "info@business-software.com.company", "info@buzzclan.com", "info@cactusvpn.com", "info@calabrio.com", "info@calendar.com", "info@canspace.ca", "info@canto.com", "info@capterra.com", "info@cardboardconnection.com", "info@chargedevs.com", "info@charterglobal.com", "info@checklyhq.com", "info@chetu.com", "info@chinananosoft.com", "info@chipchick.com", "info@cioviews.com", "info@clariantcreative.com", "info@cleardigital.com", "info@cleartail.com", "info@clearwatersecurity.com", "info@cloud.ionos.com", "info@cloudaware.com", "info@cloudficient.com", "info@cloudflight.io", "info@cloudian.com", "info@clouvider.net", "info@cmmiinstitute.com", "info@cmscritic.com", "info@cncf.io", "info@codemag.com", "info@coderslink.com", "info@codesigningstore.com", "info@colorexpertsbd.com", "info@comparitech.com", "info@conversion-rate-experts.com", "info@convinceandconvert.com", "info@corelight.com", "info@coveo.com", "info@craftercms.com", "info@crashplan.com", "info@crayon.com", "info@crm.org", "info@crn.com", "info@cronyxdigital.com", "info@crowdstrike.com", "info@csdisco.com", "info@ctm360.com", "info@cxl.com", "info@cycode.com", "info@cynet.com", "info@dagmarmarketing.com", "info@darktrace.com", "info@dashword.com", "info@datacenterdynamics.com", "info@datadoghq.com", "info@dataminr.com", "info@datanorth.ai", "info@dataprotection.ie", "info@datasunrise.com", "info@demandbase.com", "info@dentimax.com", "info@descope.com", "info@designrush.com", "info@determ.com", "info@device42.com", "info@dhtmlx.com", "info@diabatix.com", "info@digi.com", "info@digitalagencybangkok.com", "info@digitalapplied.com", "info@digitalmarketingph.com", "info@digitechaustin.com", "info@digivizer.com", "info@dinorank.com", "info@dirtfish.com", "info@dispatchtrack.com", "info@docker.com", "info@docusnap.com", "info@dokka.me", "info@domo.com", "info@draup.com", "info@dropcommerce.com", "info@dynamicquest.com", "info@eastsideco.com", "info@ecency.com", "info@echo-factory.com", "info@ecommercetech.io", "info@el-balad.com", "info@eleken.co", "info@elementthree.com", "info@elitelegalmarketing.com", "info@engineering.com", "info@eurofiber.com", "info@evdpl.com", "info@evokad.com", "info@executivemosaic.com", "info@expertise.com", "info@expresswriters.com", "info@farotech.com", "info@fetcher.ai", "info@finoit.com", "info@fortinet.com", "info@fosteringmediaconnections.org", "info@fotornr.com", "info@freshysites.com", "info@fruitylogic.com", "info@futuregenapps.com", "info@gapsystudio.com", "info@genwords.com", "info@geomotiv.com", "info@getapp.com", "info@ghostery.com", "info@gigasavvy.com", "info@goengineer.com", "info@guardz.com", "info@habr.com", "info@hauerpower.com", "info@hennessey.com", "info@hireahackeronline.org", "info@hornetsecurity.com", "info@imcreator.com", "info@imsa.com", "info@inmotionmktg.com", "info@inray.de", "info@insightssuccess.com", "info@itcareerfinder.com", "info@itconvergence.com", "info@iubenda.com", "info@ivalue.co.in", "info@ivanti.com", "info@jamieivey.com", "info@jlbworks.com", "info@jp.salesforce.com", "info@jp43training.com", "info@kindermusik.com", "info@klintmarketing.com", "info@klizer.com", "info@konigle.com", "info@krausmarketing.com", "info@kunocreative.com", "info@kwsmdigital.com", "info@lairedigital.com", "info@latevaweb.com", "info@layercake.cloud", "info@leaseweb.com", "info@leonardagenceweb.com", "info@levyonline.com", "info@linuxfoundation.org", "info@lionsroar.com", "info@liveoriginal.com", "info@localiq.com", "info@lutforpro.com", "info@makdigitaldesign.com", "info@make.com", "info@managedmethods.com", "info@manektech.com", "info@marketingltb.com", "info@marketingminer.com", "info@martal.ca", "info@mayecreate.com", "info@mdmarketingdigital.com", "info@mediagroupww.com", "info@mediamint.com", "info@metclub.com", "info@miguelgrinberg.com", "info@minds.com", "info@miracuves.com", "info@mobilemoxie.com", "info@mobulous.com", "info@moderncat.com", "info@momenticmarketing.com", "info@montway.com.how", "info@more-fire.com", "info@myamazingwebsite.com", "info@mywebaudit.com", "info@nareshit.com", "info@natfluence.com", "info@netalico.com", "info@netcraft.com", "info@nexustek.com", "info@nmgtechnologies.com", "info@nominus.com", "info@novotechnik.com.", "info@o2btechnologies.com", "info@oloid.ai", "info@omaticsoftware.com", "info@onesmartsheep.com", "info@onlineoptimism.com", "info@onliveserver.com", "info@onlogic.com", "info@opinionstage.com", "info@opsio.in", "info@optimabatteries.com", "info@orainti.com", "info@osome.com", "info@owncloud.com", "info@paiza.io", "info@papierdarmenie.fr", "info@perforce.com", "info@piranha.digital", "info@portkeyseo.com", "info@postman.com", "info@prefacestudios.com", "info@prismatic.io", "info@proofpoint.com", "info@quantumdigital.com", "info@quartsoft.com", "info@ranksol.com", "info@rankworks.com", "info@rankyak.com", "info@rapidseo.london", "info@readgamble.com", "info@red-gate.com", "info@refuelagency.com", "info@req.co", "info@revistaseguridad360.com", "info@revive.digital", "info@rivaldigital.com", "info@rohitkumarseo.com", "info@ronitbaras.com", "info@rynoss.com", "info@sanishtech.com", "info@scoreapps.com", "info@securiti.ai", "info@security.org", "info@sekel.tech", "info@sender.net", "info@seo.domains", "info@seoclarity.net", "info@seoexpertscompanyindia.com", "info@serpwatch.io", "info@serverion.com", "info@silverbackstrategies.com", "info@simpleseogroup.com", "info@simpletire.com", "info@singlegrain.com", "info@siteminder.com", "info@sliderrevolution.com", "info@smartbear.com", "info@smartlook.com", "info@snapgene.com", "info@soapdirt.com", "info@softnep.com", "info@softwebsolutions.com", "info@sol8.com", "info@soltech.net", "info@spd.tech", "info@sprinklr.com", "info@sproutsocial.com", "info@ssldragon.com", "info@straightnorth.com", "info@sujitech.com", "info@t5datacenters.com", "info@taggmagazine.com", "info@tblocks.com", "info@techgenies.com", "info@technologyadvice.com", "info@techuk.org", "info@tecla.io", "info@tekrevol.com", "info@theadfirm.net", "info@thecurvyfashionista.com", "info@thehackernews.com", "info@theinfluenceagency.com", "info@themewagon.com", "info@thestudio.com", "info@thesunpapers.com", "info@theuxda.com", "info@thewritersforhire.com", "info@thirdmarblemarketing.com", "info@threatintelligence.com", "info@time4vps.com", "info@timg.com", "info@tinybeans.com", "info@tinyfrog.com", "info@toptal.com", "info@triggerbee.com", "info@troyerwebsites.com", "info@trustindex.io", "info@tryrdp.com", "info@tun.com", "info@twooctobers.com", "info@ultimatemotorcycling.com", "info@unixhost.pro", "info@uprite.com", "info@useo.ae", "info@vandanayellowpages.com", "info@ventureharbour.com", "info@verzdesign.com", "info@virtualpbx.com", "info@vsys.host", "info@wbur.org", "info@wdiy.org", "info@webbeeglobal.com", "info@webhelpagency.com", "info@websitemagazine.com", "info@welocalize.com", "info@whatwpthemeisthat.com", "info@wildbrain.com", "info@williamsmedia.co", "info@wixmediagroup.com", "info@wordstream.com", "info@work-management.org", "info@worksuite.com", "info@wow24-7.io", "info@wpslimseo.com", "info@wscubetech.com", "info@xavor.com", "info@xebia.com", "info@yelomarketing.com", "info@zentail.com", "info@zetaglobal.com", "info@zimperium.com", "infonetsuite\\_ww@oracle.com", "infosec@belden.com", "inquiries@hatfieldmedia.com", "inquiries@jfrog.com", "inquiry@searchrank.com", "insiders@roadsandkingdoms.com", "investor@bmc.com", "investor\\_relations@netapp.com", "investorrelations@wd40.com", "istio-steering@googlegroups.com", "iteng@mongodb.com", "j.milner@absolute.digital", "jaclyn@2tenmarketing.com", "jake@300cbt.com", "james.del@passionfru.it", "james@genesis.global", "jamie@jamieivey.com", "jane@framer.com", "janelle@bornsocial.co", "jason@hennessey.com", "jason@jasonbarnard.com", "jason@kalicube.com", "javier@theemailmarketers.com", "jbanowetz@napervillemagazine.com", "jean-louis.benard@sociabble.com", "jeanpierre@sphereagency.com", "jelena@klima101.rs", "jessica@hawksem.com", "jethro.may@finnpartners.com", "jneyman@kdll.org", "jobs@bighuman.com", "jobs@designrush.com", "joe.considine@markeluk.com", "johannes@voice.ai", "john@levelupleads.io", "john@order.co", "john@simpleprogrammer.com", "john@uforocks.com", "josh@mwi.com", "joyfoodsunshine@gmail.com", "jparran@fitnessondemand247.com", "julia.taran@productiveshop.com", "juliemeasuresblog@gmail.com", "julien.schaaf@kolsquare.com", "karen@fluxbranding.com", "karriere@plusserver.com", "kate.bove@ask.com", "kate@seowind.io", "katie.mccann@relayfi.com", "kaylamarie@ivorymix.com", "kbeeftink@funnelytics.io", "kevin@knifewear.com", "khaley@newscheckmedia.com", "khirschfield@scienceleadership.org", "kim.bunermann@futurenet.com", "kinner@knorish.com", "krishnan@outdoo.ai", "krista@kreative-media.com", "kristina@advisera.com", "kyle@tagteamdesign.com", "lance@avalanchegr.com", "laura@publicadagency.com", "legal@altexsoft.com", "legal@foundryco.com", "legal@gizmodo.com", "legal@glidedesign.com", "legal@hackernoon.com", "legal@intercom.io", "legal@pingcap.com", "legal@spinnakersupport.com", "legal@xtom.com", "leo@crisp.chat", "lindsay@benbellabooks.com", "lindsey@themotherchic.com", "lovethewub@wubbanub.com", "lutfor@lutforpro.com", "maggie.holland@futurenet.com", "mail@mir-robots.com", "majeed@textellent.com", "makelifelovely.laura@gmail.com", "manish.goyal@us.ibm.com", "marcel.fuhlmann@docusketch.com", "marcin@recruitee.com", "marketing-latam@a10networks.com", "marketing.technosidd@gmail.com", "marketing@birlasoft.com", "marketing@boostlingo.com", "marketing@brandverity.com", "marketing@brightpattern.com", "marketing@candg.com", "marketing@caterease.com", "marketing@customer.com", "marketing@deque.com", "marketing@dotcms.com", "marketing@givesmart.com", "marketing@hightouchinc.com", "marketing@infront.com", "marketing@ironmarkusa.com", "marketing@jadeglobal.com", "marketing@jamssoftware.com", "marketing@jobnimbus.com", "marketing@leemediagroup.com", "marketing@nilesecure.com", "marketing@odys.global", "marketing@pedowitzgroup.com", "marketing@preemptive.com", "marketing@prisync.com", "marketing@realestatewebmasters.com", "marketing@relianoid.com", "marketing@resolvepay.com", "marketing@revolutionehr.com", "marketing@risingrp.com", "marketing@rosehousecolorado.com", "marketing@smartbrief.com", "marketing@telarus.com", "marketing@templatemonster.com", "marketing@tpionline.com", "marketing@webgility.com", "matt.rosoff@theregister.com", "matt@slocumstudio.com", "matthieu@nannybag.com", "max.cron@onlineoptimism.com", "max@crosstimbersgazette.com", "maxcheng@maxapress.com", "maximus@nsimail.com", "mcaputo@napervillemagazine.com", "mdo@wtwhmedia.com", "meandyou@weandthecolor.com", "media.inquiry@ncratleos.com", "media@freightwaves.com", "media@meetup.com", "media@nintex.com", "media@nordpass.com", "media@optiv.com", "media@parentingpod.com", "media@ultatel.com", "mediarequests@roomandboard.com", "melike@prisync.com", "melodicmag@gmail.com", "melody@grkids.com", "memberpress@caseproof.com", "membership@roadsandkingdoms.com", "mflores@theseatco.com", "micah@crosstimbersgazette.com", "michael.guan@finalroundai.com", "michael@ppc.io", "michelle.holford@cognite.com", "mike@sayenkodesign.com", "mike@scribbl.co", "mirandareviews@gmail.com", "mkt@softnep.com", "msimon@macworld.com", "muiq@measuringu.com", "mylifewellloved@gmail.com", "myname@mywebsite.com", "mysupport@snapnames.com", "nathan.korfker@blauwemonsters.nl", "nathan@boldgrid.com", "nedra@adventuremomblog.com", "neil@conversion.ai", "newbusiness@envisionitagency.com", "news@cmonitor.com", "news@crosstimbersgazette.com", "news@klewtv.com", "news@kunr.org", "news@nhpr.org", "news@sentinelcolorado.com", "news@startlandnews.com", "news@tmnews.com", "news@wausaudailyherald.com", "news@wunc.org", "news@wwltv.com", "newsletter@getsafeonline.org", "newsletter@ittnewsletter.com", "newsletter@mattreport.com", "newsone-core@interactiveone.com", "newsroom@progress-index.com", "newstips@wlns.com", "nice.sales@nice.com", "nick.janetakis@gmail.com", "nico@failory.com", "nikki@startlandnews.com", "nkidess@gisma.com", "no-reply@miniorange.com", "notice@netboxlabs.com", "nworkman@seniormarketsales.com", "obits@independentmail.com", "office@admindagency.com", "office@elit-web.com", "office@octolize.com", "office@webbylab.com", "office\\_usa@wezom.com", "officeadmin@elevationb2b.com", "ogugua@myjobmag.co.ke", "olga@seosly.com", "ols@novabackup.com", "onlineservice@springernature.com", "oshkoshnews@thenorthwestern.com", "over@mattreport.com", "owl@wyzowl.com", "p@outgrow.co", "paris@discoverwalks.com", "partner@fieldservicely.com", "partners@callcenterstudio.com", "partners@databricks.com", "partners@digicert.com", "partners@dragapp.com", "partners@flipboard.com", "partners@honestbrandreviews.com", "partners@liquidweb.com", "partners@livechat.com", "partners@oaepublish.com", "partnership@adspower.com", "partnership@dhis2.org", "partnerships@memberstack.com", "partnerships@netsolutions.com", "partnerships@offerzen.com", "paul@salesken.ai", "pavan@tgnns.com", "pete@spotify.com", "phil@pancommunications.com", "pi1trinity@aol.com", "pieroxy@pieroxy.net", "pmwebmaster@hearst.com", "policy@mail-tester.com", "post@dhis2.org", "post@icoda.io", "pr@abiresearch.com", "pr@canonical.com", "pr@cyberproof.com", "pr@delinea.com", "pr@fortinet.com", "pr@gardenandgun.com", "pr@geotab.com", "pr@newrelic.com", "pr@randomhouse.com", "pr@zenfolio.com", "preetima@entrepreneurapj.com", "press.relations@broadcom.com", "press@atlassian.com", "press@barrons.com", "press@battleofguardians.com", "press@bolt.com", "press@bonterratech.com", "press@box.com", "press@buildbox.com", "press@cablelabs.com", "press@cdata.com", "press@cnet.com", "press@deepgram.com", "press@dropbox.com", "press@emplifi.io", "press@envimedia.co", "press@github.com", "press@grahamcluley.com", "press@headway.co", "press@hourly.io", "press@huggingface.co", "press@lifewire.com", "press@malwarebytes.com", "press@maptiler.com", "press@medallia.com", "press@name.com", "press@nordlayer.com", "press@pipedrive.com", "press@soci.ai", "press@softonic.com", "press@stukent.com", "press@testmuai.com", "press@thesis.agency", "press@truckerpath.com", "press@unicode.org", "press@upwork.com", "press@wubbanub.com", "privacy-eu@squareup.com", "privacy@1password.com", "privacy@airslate.com", "privacy@apizee.com", "privacy@bazaarvoice.com", "privacy@bigblue.io", "privacy@bluecatnetworks.com", "privacy@board.com", "privacy@brightlocal.com", "privacy@calix.com", "privacy@cision.com", "privacy@clickbank.com", "privacy@cloudi-fi.com", "privacy@constantcontact.com", "privacy@databricks.com", "privacy@dbsinteractive.com", "privacy@disqus.com", "privacy@divbyzero.com", "privacy@dotdashmdp.com", "privacy@eventbrite.com", "privacy@fullstory.com", "privacy@hadrian.io", "privacy@hq.bill.com", "privacy@iabbb.org", "privacy@insightmediagroup.io", "privacy@localiq.au", "privacy@mailgun.com", "privacy@mediavine.com", "privacy@mitratech.com", "privacy@mollie.com", "privacy@momentivesoftware.com", "privacy@newfold.com", "privacy@newrelic.com", "privacy@okta.com", "privacy@optro.ai", "privacy@proofpoint.com", "privacy@qubstudio.com", "privacy@searchenginejournal.com", "privacy@securityhq.com", "privacy@shipfusion.com", "privacy@stackcommerce.com", "privacy@syskit.com", "privacy@tmdhosting.com", "privacy@trafficguard.ai", "privacy@tweaktown.com", "privacy@usenix.org", "privacy@uservoice.com", "privacy@vanta.com", "privacy@vercel.com", "privacy@vonage.com", "privacy@vpnmentor.com", "privacy@www.vidyard.com", "privacy@xara.com", "privacy@xygeni.io", "privacy@zendesk.com", "privacy\\_request@wpromote.com", "product@barrons.com", "production@sentinelcolorado.com", "projects@litebreeze.com", "prsubmit@biospace.com", "psirt@netwrix.com", "publisher-success@disqus.com", "publisher@guernicamag.com", "publisher@martechrecord.com", "publisher\\_support@flipboard.com", "qualitest@qualitestgroup.com", "questions@boxcast.com", "quy.truong@eqvn.net", "racer@racer.com", "rafael.akao@kaspersky.com", "raisul.mushfeq@itnuthosting.com", "ravi@theplanetsoft.com", "raymond@ooshirts.com", "realityashley@gmail.com", "redaction-pdm@reworldmedia.com", "redazione@gazzettadisiena.it", "renewals@cambiumnetworks.com", "reply@distillery.com", "reports@kepios.com", "rfq@claritymis.com", "rick.leach@stellarcontent.com", "ricky.wolff@markletic.com", "riten@fueler.io", "robert@emailtooltester.com", "robotoverlord@goelastic.com", "rodrigo@asksuite.com", "romain@rdr-it.com", "ross.densley@modernb2b.co", "rsharma@mile.tech", "rsmoleychuk@b2broker.com", "russell.parsons@marketingweek.com", "ryanlewallen@county17.com", "ryoung@sagacitysolutions.co.uk", "s.vasylyshyn@netpeak.net", "saanchi.gupta@india.com", "sales.inquiry@dmcinfo.com", "sales@1gbits.com", "sales@abmagency.com", "sales@addictivetips.com.to", "sales@aplos.com", "sales@appschopper.com", "sales@aspencore.com", "sales@assetinfinity.com", "sales@avidxchange.com", "sales@avolvesoftware.com", "sales@baytechconsulting.com", "sales@bitsight.com", "sales@blumira.com", "sales@bntca.com", "sales@bodhost.com", "sales@breezechms.com", "sales@brownrice.com", "sales@calcxml.com", "sales@camstreamer.com", "sales@carcovers.com", "sales@cdnetworks.com", "sales@cerberusftp.com", "sales@cloudzy.com", "sales@coaxsoft.com", "sales@commercepundit.com", "sales@comodo.com", "sales@connectpos.com", "sales@cyfuture.com", "sales@decodo.com", "sales@designindc.com", "sales@dimensionmarketresearch.com", "sales@dmarcadvisor.com", "sales@docuseal.com", "sales@domaintools.com", "sales@dotcom-monitor.com", "sales@dreamfactory.com", "sales@dynatechconsultancy.com", "sales@empireflippers.com", "sales@etherfax.net", "sales@frooition.com", "sales@gbim.com", "sales@greenbananaseo.com", "sales@guestpost.com", "sales@gyrus.com", "sales@hawkhost.com", "sales@helium-seo.com", "sales@hivelocity.net", "sales@hostagle.com", "sales@hostwinds.com", "sales@ibaset.com", "sales@indeema.com", "sales@ironplane.com", "sales@kingservers.com", "sales@managedsolution.com", "sales@manning.com", "sales@megrisoft.com", "sales@milesit.com", "sales@mssqltips.com", "sales@netscapeindia.com", "sales@newyorkcityservers.com", "sales@nixihost.com", "sales@onesignal.com", "sales@onliveserver.com", "sales@openvpn.net", "sales@pure-ip.com", "sales@rdparena.com", "sales@regpacks.com", "sales@rishabhsoft.com", "sales@rocketmatter.com", "sales@rsvpify.com", "sales@serpact.com", "sales@shotstack.io", "sales@simplermedia.com", "sales@site24x7.com", "sales@solidwp.com", "sales@spaceotechnologies.com", "sales@sparkservices.net", "sales@stripe.com", "sales@sysinfotools.com", "sales@techafrica.news", "sales@tenfold-security.com", "sales@theplanetsoft.com", "sales@thriveagency.com", "sales@time4vps.com", "sales@timetrex.com", "sales@timg.com", "sales@unixhost.pro", "sales@unlimitedgb.com", "sales@webhosting.uk.com", "sales@wellsky.com", "sales@xcitium.com", "sales@yardi.com", "salesinquiryin@oracle.com", "salesteam@avoxi.com", "sam@brandclickx.com", "sam@completemusicupdate.com", "santiago.sanchez@dolarapp.com", "sara@meetdandy.com", "sarah.riggio@elementthree.com.", "saurav.kumar@india.com", "schneier@schneier.com", "scuster@forumone.com", "sean@mapletreemedia.com", "secureblitz@gmail.com", "security@dataiku.com", "security@getastra.com", "security@montecarlodata.com", "sen@imminentbusiness.com", "seo@mimvi.com", "service@blogseo.ai", "service@ppspy.com", "serviceclients-fr@turo.com", "services@accessibe.com", "services@streamcreative.com", "shane@heroesofdigital.com", "sharon.florentine@cyberriskalliance.com", "shawnee@clevertap.com", "shripad@citationbuilderpro.com", "skylar@hollyland.com", "sleone@cmonitor.com", "smile@wideo.co", "smorris@taggmagazine.com", "smqadri@berrybyte.net", "snoel@betweenthelinescopy.com", "social@artemis.marketing", "social@atomicdc.com", "social@bullseyeinternet.com", "social@butlertill.com", "social@csod.com", "social@kjzz.org", "social@mytotalretail.com", "social@navc.com", "social@off-road.com", "social@sproutsocial.com", "social@staff.mugglenet.com", "social\\_media@mckinsey.com", "socialcm@wildskymedia.com", "socialmaster@denodo.com", "socialmedia@docusign.com", "socialmedia@powerschool.com", "socialmedia@surfsharkteam.com", "socialpower@myadvice.com", "soporte@imaginacolombia.com", "spiritwebmaster@archspm.org", "sponsorship@clutch.co", "spsvc.hr365@cubiclogics.com", "staff@nickiswift.com", "staff@the-leaky-cauldron.org", "start@vmoscloud.com", "sten@tability.io", "stephane.rios@fasterize.com", "stephen@biometricupdate.com", "steven@nubela.co", "stewart@ppc.io", "studio@envisagedigital.com", "studio@figmentagency.com", "subscriptions@racerxonline.com", "supplierdiversity@micron.com", "supply.chain.dive.editors@industrydive.com", "support-rm@tempo.io", "support.lastpass@alerting-services.com", "support.teamhp@philips.com", "support@10kwraps.com", "support@1gbits.com", "support@250ok.com", "support@99firms.com", "support@99rdp.com", "support@aeroleads.com", "support@agencyplatform.com", "support@aigenerator.com", "support@aioseo.com", "support@akamai.com", "support@akk.io", "support@alexhost.com", "support@alohabrowser.com", "support@amio.io", "support@ampifire.com", "support@autopagerank.com", "support@badgermapping.com", "support@bannerbear.com", "support@behindtheshutter.com", "support@beyondidentity.com", "support@bigdatacloud.com", "support@bigin.com", "support@bigtincan.com", "support@bill4time.com", "support@billdu.com", "support@birdeye.com", "support@bitgo.com", "support@bloomfire.com", "support@bloomtech.com", "support@blueprism.com", "support@blurb.com", "support@bodhost.com", "support@boldreports.com", "support@bookedin.net", "support@brighttalk.com", "support@buymeacoffee.com", "support@byteful.com", "support@cabotwealth.com", "support@cadence.com", "support@cal.com", "support@catalyst2.com", "support@ceros.com", "support@certicom.com", "support@chamberofcommerce.com", "support@changeip.com", "support@chatbot.com", "support@clickrank.ai", "support@cloaked.com", "support@close.com", "support@cloudcall.com", "support@cloudchipr.com", "support@cloudinary.com", "support@cloudzy.com", "support@cm.com", "support@cmitsolutions.com", "support@codesigningstore.com", "support@codility.com", "support@cohere.com", "support@complianz.io", "support@continentaltire.zendesk.com", "support@convertapi.com", "support@copy.ai", "support@corellium.com", "support@cottonball.com", "support@creativemarket.com", "support@crelate.com", "support@crestron.com", "support@crossbeam.com", "support@currentware.com", "support@cyberdeveloperbd.com", "support@cyberghost.ro", "support@cycognito.com", "support@dash0.com", "support@dataally.ai", "support@dbschema.com", "support@debugbear.com", "support@denverwebsitedesigns.com", "support@design.com", "support@destructoid.com", "support@detecting-ai.com", "support@deviceatlas.com", "support@dianahost.com.bd", "support@digitalcommerce360.com", "support@digitalmarketer.com", "support@digitalmatter.com", "support@dilate.com.au", "support@displayr.com", "support@dmarcadvisor.com", "support@dmarcian.com", "support@dnwe.com", "support@docparser.com", "support@docupilot.app", "support@domotz.com", "support@doppel.com", "support@dorik.com", "support@drata.com", "support@drip.com", "support@dripify.com", "support@dynamiccommunities.zendesk.com", "support@ecombalance.com", "support@ecomhunt.com", "support@enigmasoftware.com", "support@extremebacklink.com", "support@feedhive.com", "support@figma.com", "support@flipboard.com", "support@fmtc.co", "support@followupboss.com", "support@formsite.com", "support@foxitsoftware.com", "support@freemius.com", "support@freeup.net", "support@gabb.com", "support@gamma.app", "support@geotargetly.com", "support@getacopywriter.com", "support@getbento.com", "support@go54.com", "support@goaffpro.com", "support@gosquared.com", "support@graphicszoo.com", "support@gravitywiz.com", "support@hackerone.com", "support@here.com", "support@hexlet.io", "support@hikeseo.co", "support@hilltopads.com", "support@hiveage.com", "support@holistiplan.com", "support@hoonigan.com", "support@hyphensolutions.com", "support@icdsoft.com", "support@iheartraves.com", "support@imagekit.io", "support@india.com", "support@influenceflow.io", "support@insynchq.com", "support@intelusagency.com", "support@invideo.io", "support@itsm-docs.com", "support@jasminedirectory.com", "support@jbtools.com", "support@keywordinsights.ai", "support@kindermusik.com", "support@kingsroadmerch.com", "support@knowband.com", "support@ladesk.com", "support@levyonline.com", "support@lightpdf.com", "support@linkmybooks.com", "support@lionsroar.com", "support@localdev.foundation", "support@lucid.co", "support@m2ecloud.com", "support@marketingprofs.com", "support@marklogic.com", "support@maven.com", "support@medesk.net", "support@meetedgar.com", "support@meowapps.com", "support@merithub.com", "support@metricstream.com", "support@milled.com", "support@mindmapai.app", "support@miniwebtool.com", "support@mist.com", "support@mobiloud.com", "support@modal.com", "support@monday.com", "support@monetizemore.com", "support@monovm.com", "support@monsterinsights.com", "support@mopinion.com", "support@multcloud.com", "support@munchweb.com", "support@name.com", "support@namecheap.com", "support@netlify.com", "support@newcoupons.info", "support@newswirejet.com", "support@nicepage.com", "support@numerous.ai", "support@nytroseo.com", "support@octoparse.com", "support@oloid.ai", "support@omnigroup.com", "support@onelogin.com", "support@onliveserver.com", "support@ordoro.com", "support@organized31.com", "support@oxygenbuilder.com", "support@p0.dev", "support@pageoptimizer.pro", "support@peopleperhour.com", "support@posimyth.com", "support@pressrelease.com", "support@printavo.com", "support@printkk.com", "support@prontomarketing.com", "support@proprofs.com", "support@proxy-seller.com", "support@quantvps.com", "support@rapidsslonline.com", "support@rdparena.com", "support@rebrandly.com", "support@roxybrowser.com", "support@rss.com", "support@runonflux.com", "support@rush-analytics.com", "support@rvlife.com", "support@sanishtech.com", "support@scienceofpeople.com", "support@secureserver.net", "support@sellbrite.com", "support@sevenfigureagency.com", "support@shortpixel.com", "support@simplilearn.com", "support@sirvoy.com", "support@site24x7.com", "support@slideshare.net", "support@smallest.ai", "support@smallseotools.com", "support@smartblogger.com", "support@smbteam.com", "support@socialboosting.com", "support@sonary.com", "support@sonicscoop.com", "support@sparkservices.net", "support@splunk.com", "support@spoton.com", "support@stablehost.com", "support@storageunitsoftware.com", "support@subframe.com", "support@sysinfotools.com", "support@tagembed.com", "support@tarhely.eu", "support@taskade.com", "support@texasmonthly.com", "support@thehoth.com", "support@themeignite.com", "support@themeton.com", "support@timetoreply.com", "support@titanapps.io", "support@tripleseat.com", "support@truehost.cloud", "support@tunein.com", "support@tutorbird.com", "support@universe.com", "support@unixhost.pro", "support@upseller.com", "support@urbanpro.com", "support@vercel.com", "support@vib.tech", "support@wave.video", "support@webfor.com", "support@webhosting.uk.com", "support@webkul.com", "support@webnames.ca", "support@webz.io", "support@wesupplylabs.com", "support@whenavailable.com", "support@whop.com", "support@wpfusion.com", "support@xara.com", "support@yourmembership.com", "support@zerys.com", "support@zinio.com.back", "support@zippia.com", "support@ziprecruiter.com", "susan@organized31.com", "syazana@honeykidsasia.com", "syncfusion@syncfusion.com", "tac@netally.com", "tbray@scng.com", "tcollins@eoncoat.com", "team-wcap-contact@w3.org", "team@accio.com", "team@appmakersla.com", "team@baeldung.com", "team@banzai.io", "team@bark.com", "team@codesigningstore.com", "team@flockler.com", "team@lemonadestand.org", "team@lifterlms.com", "team@modo25.com", "team@navattic.com", "team@reply.bandwidth.com", "team@topleftdesign.com", "team@useproof.com", "team@vulcanpost.com", "team@wd-strategies.com", "team@wployalty.com", "tecbrasil@technologyevaluation.com", "tech@revoyant.com", "tentacles@laughingsquid.com", "thomas@dashword.com", "thriftyniftymommy@yahoo.com", "tiffany.rankin@beamex.com", "ting.yang@ifdesign.com", "tips@channel3000.com", "tips@county17.com", "tips@techcrunch.com", "tips@thesixthaxis.com", "todd@kickserv.com", "tom@fast.io", "tomandlorenzo@gmail.com", "trang.nguyen@linxens.com", "trevor@trevorfox.com", "trigger@applet.ifttt.com", "trimechgroup@trimech.com", "tristan.manalac@biospace.com", "tuki@lianatech.com", "tyler@taptwicedigital.com", "ulrik@encord.com", "update@grafana.com", "updates@status.avalara.com", "us@fullstack.io", "usama@rankvisely.com", "uspress@xero.com", "verification@doit-intl.com", "verifications@quinnox.com", "video@techtarget.com", "vinay@sproutworth.com", "virtualworkplace@officespacesoftware.com", "wahid@tasjeel.ae", "wards@wardsauto.com", "web@wamc.org", "webmaster@domain.com", "webmaster@iso.org", "webmaster@myconfinedspace.com", "webpackjsonp@builder.io", "website@codeweavers.com", "wedodigitaleditor@gmail.com", "willy@truenorthsocial.com", "with@syntax.versions", "write@soapdirt.com", "wurst@hollywoodintoto.com", "yahoogdprrepresentative@mhc.ie", "yeasin@buddyboss.com", "yourfriends@agencyvista.com", "zaa@unicsoft.com", "zac@freshysites.com"];
-</script>
-<script>
-const {useState,useEffect,useRef,useCallback,useMemo}=React;
-const STORAGE_KEY='dupguard_v2';
+<body class="bg-gray-50 min-h-screen font-sans antialiased text-gray-900">
 
-function loadDB(){
-  try{const r=localStorage.getItem(STORAGE_KEY);if(r)return JSON.parse(r);}catch(e){}
-  return {emails:new Array(...SEED_EMAILS).map(v=>({value:v,sheet:'Google Sheet (seeded)',addedAt:'Pre-loaded'})),
-          domains:new Array(...SEED_DOMAINS).map(v=>({value:v,sheet:'Google Sheet (seeded)',addedAt:'Pre-loaded'})),
-          sheets:[{name:'Google Sheet (seeded)',addedAt:'Pre-loaded',emailCount:SEED_EMAILS.length,domainCount:SEED_DOMAINS.length}]};
-}
-function saveDB(db){
-  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(db));}catch(e){console.warn('Storage full, not persisting');}
-}
-function normalizeEmail(e){return(e||'').toLowerCase().trim();}
-function normalizeDomain(d){
-  if(!d)return'';
-  let s=d.toLowerCase().trim().replace(/^https?:\/\//,'').replace(/^www\./,'').split('/')[0].split('?')[0];
-  return s.trim();
-}
-function isDomainCol(h){return/domain/i.test(h);}
-function isEmailCol(h){return/email/i.test(h)&&!/sent/i.test(h)&&!/status/i.test(h);}
-function autoDetectCols(headers){
-  const emailCols=[];const domainCols=[];
-  headers.forEach(h=>{
-    if(isEmailCol(h))emailCols.push(h);
-    if(isDomainCol(h))domainCols.push(h);
-  });
-  return{emailCols,domainCols};
-}
-function downloadCSV(rows,filename){
-  if(!rows.length)return;
-  const headers=Object.keys(rows[0]);
-  const csv=[headers.join(','),...rows.map(r=>
-    headers.map(h=>{const v=(r[h]??'').toString().replace(/"/g,'\"\"');return/[,"\n]/.test(v)?`"${v}"`:v;}).join(',')
-  )].join('\n');
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download=filename;a.click();
-}
+    <!-- Header Navigation -->
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-indigo-600 p-2 rounded-lg text-white">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                    </div>
+                    <div>
+                        <span class="text-xl font-bold tracking-tight text-gray-900">DupGuard</span>
+                        <span class="ml-2 px-2 py-0.5 text-xs bg-indigo-100 text-indigo-800 rounded-full font-medium">v1.1</span>
+                    </div>
+                </div>
+                <nav class="flex space-x-8 h-full">
+                    <button onclick="switchTab('checker')" id="tab-checker" class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium border-indigo-600 text-indigo-600">
+                        🔍 Team Checker
+                    </button>
+                    <button onclick="switchTab('admin')" id="tab-admin" class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                        🗄️ Admin DB
+                    </button>
+                    <button onclick="switchTab('deploy')" id="tab-deploy" class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                        🚀 Cloud Setup
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </header>
 
-// Toast
-function Toast({msg,onDone}){
-  useEffect(()=>{const t=setTimeout(onDone,2800);return()=>clearTimeout(t);},[]);
-  return React.createElement('div',{className:'toast'},msg);
-}
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- ================= TEAM CHECKER VIEW ================= -->
+        <div id="view-checker" class="space-y-6">
+            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                <h2 class="text-lg font-semibold mb-2">Upload Team Research File</h2>
+                <p class="text-sm text-gray-500 mb-4">Upload your CSV file. The tool automatically flags any heading containing "email" or "domain" (like Email 1, Domain Name) and preserves all your other columns.</p>
+                
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center bg-gray-50 hover:bg-gray-100 transition cursor-pointer relative">
+                    <input type="file" id="teamFile" accept=".csv" onchange="handleTeamUpload(event)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                    <div class="space-y-2">
+                        <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4-4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                        <p class="text-sm font-medium text-gray-700" id="teamFileLabel">Click or drop your CSV file here</p>
+                    </div>
+                </div>
 
-// ── ADMIN PAGE ───────────────────────────────────────────────────────────────
-function AdminPage({db,setDB,showToast}){
-  const [drag,setDrag]=useState(false);
-  const [parsed,setParsed]=useState(null);
-  const [colMap,setColMap]=useState({});// key: colName, value: 'email'|'domain'|'data'
-  const [sheetName,setSheetName]=useState('');
-  const [loading,setLoading]=useState(false);
-  const [tab,setTab]=useState('emails');
-  const [search,setSearch]=useState('');
-  const fileRef=useRef();
+                <div id="columnSelectors" class="hidden mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-indigo-50 rounded-lg border border-indigo-100">
+                    <div>
+                        <label class="block text-xs font-bold text-indigo-900 uppercase tracking-wider mb-1">Detected Email Column(s)</label>
+                        <div id="emailColBadge" class="text-sm bg-white px-3 py-2 border border-indigo-200 rounded text-gray-700 font-mono">None</div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-indigo-900 uppercase tracking-wider mb-1">Detected Domain Column(s)</label>
+                        <div id="domainColBadge" class="text-sm bg-white px-3 py-2 border border-indigo-200 rounded text-gray-700 font-mono">None</div>
+                    </div>
+                </div>
+            </div>
 
-  function handleFile(file){
-    if(!file)return;
-    Papa.parse(file,{header:true,skipEmptyLines:true,complete:(res)=>{
-      const rows=res.data;if(!rows.length)return;
-      setParsed(rows);
-      const headers=Object.keys(rows[0]);
-      const {emailCols,domainCols}=autoDetectCols(headers);
-      const map={};
-      headers.forEach(h=>{
-        if(emailCols.includes(h))map[h]='email';
-        else if(domainCols.includes(h))map[h]='domain';
-        else map[h]='data';
-      });
-      setColMap(map);
-      setSheetName(file.name.replace(/\.csv$/i,''));
-    }});
-  }
+            <!-- Results Section -->
+            <div id="resultsSection" class="hidden bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div class="p-6 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <h3 class="text-lg font-semibold">Processed Results</h3>
+                        <p class="text-sm text-gray-500 mt-1" id="resultsSummary">0 rows evaluated.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="downloadCSV('all')" class="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 text-sm font-medium rounded-lg transition shadow-sm">📥 Download All Rows</button>
+                        <button onclick="downloadCSV('new')" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 text-sm font-medium rounded-lg transition shadow-sm">📥 Download New Only</button>
+                        <button onclick="downloadCSV('dup')" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 text-sm font-medium rounded-lg transition shadow-sm">📥 Download Duplicates Only</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto max-h-96">
+                    <table class="min-w-full divide-y divide-gray-200 text-sm" id="resultsTable">
+                        <thead class="bg-gray-50 sticky top-0">
+                            <tr id="resultsHeader"></tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200" id="resultsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
 
-  function handleImport(){
-    if(!parsed)return;
-    setLoading(true);
-    setTimeout(()=>{
-      const emailSet=new Set(db.emails.map(e=>normalizeEmail(e.value)));
-      const domainSet=new Set(db.domains.map(d=>normalizeDomain(d.value)));
-      let addedE=0,addedD=0;
-      const ts=new Date().toLocaleString();
-      const emails=[...db.emails];
-      const domains=[...db.domains];
-      const emailCols=Object.entries(colMap).filter(([,v])=>v==='email').map(([k])=>k);
-      const domainCols=Object.entries(colMap).filter(([,v])=>v==='domain').map(([k])=>k);
-      parsed.forEach(row=>{
-        emailCols.forEach(ec=>{
-          const v=normalizeEmail(row[ec]);
-          if(v&&v.includes('@')&&!emailSet.has(v)){emails.push({value:v,sheet:sheetName,addedAt:ts});emailSet.add(v);addedE++;}
-        });
-        domainCols.forEach(dc=>{
-          const v=normalizeDomain(row[dc]);
-          if(v&&v.includes('.')&&!domainSet.has(v)){domains.push({value:v,sheet:sheetName,addedAt:ts});domainSet.add(v);addedD++;}
-        });
-      });
-      const sheets=[...db.sheets,{name:sheetName,addedAt:ts,emailCount:addedE,domainCount:addedD,rows:parsed.length}];
-      const nd={emails,domains,sheets};
-      saveDB(nd);setDB(nd);setParsed(null);setLoading(false);
-      showToast(`✓ Added ${addedE} emails & ${addedD} domains`);
-    },350);
-  }
+        <!-- ================= ADMIN MASTER DB VIEW ================= -->
+        <div id="view-admin" class="hidden space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm text-center">
+                    <p class="text-xs font-bold uppercase tracking-wider text-gray-400">Total Unique Master Domains</p>
+                    <p class="text-4xl font-extrabold text-indigo-600 mt-2" id="statDomains">0</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm text-center">
+                    <p class="text-xs font-bold uppercase tracking-wider text-gray-400">Total Unique Master Emails</p>
+                    <p class="text-4xl font-extrabold text-indigo-600 mt-2" id="statEmails">0</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm text-center">
+                    <p class="text-xs font-bold uppercase tracking-wider text-gray-400">Cloud Sync Status</p>
+                    <p class="text-sm font-medium mt-4 text-amber-600 inline-flex items-center px-2.5 py-1 rounded-full bg-amber-50" id="syncBadge">
+                        ⚠️ Local Mode (Standalone)
+                    </p>
+                </div>
+            </div>
 
-  const headers=parsed?Object.keys(parsed[0]||{}):[]; 
-  const filtered=tab==='emails'
-    ?db.emails.filter(e=>!search||e.value.includes(search.toLowerCase()))
-    :db.domains.filter(d=>!search||d.value.includes(search.toLowerCase()));
+            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                <h3 class="text-lg font-semibold mb-2">Import / Overwrite Master Database</h3>
+                <p class="text-sm text-gray-500 mb-4">Upload your historical master sheet file here. It automatically processes all matched data columns.</p>
+                <input type="file" accept=".csv" onchange="handleAdminUpload(event)" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+            </div>
+        </div>
 
-  return React.createElement('div',{className:'page'},
-    React.createElement('div',{className:'flex items-center justify-between mb-2'},
-      React.createElement('div',null,
-        React.createElement('div',{className:'page-title'},'🗄 Master Database'),
-        React.createElement('div',{className:'page-sub'},`Pre-loaded from your Google Sheet. Add more sheets anytime.`)
-      ),
-      React.createElement('button',{className:'btn btn-danger btn-sm',onClick:()=>{
-        if(!confirm('Reset to original seeded data only?'))return;
-        const nd=loadDB();// reloads seed
-        localStorage.removeItem(STORAGE_KEY);
-        const fresh=loadDB();saveDB(fresh);setDB(fresh);
-        showToast('Reset to seed data');
-      }},'↺ Reset DB')
-    ),
-
-    React.createElement('div',{className:'stats'},
-      React.createElement('div',{className:'stat'},React.createElement('div',{className:'stat-label'},'Emails in DB'),React.createElement('div',{className:'stat-value blue'},db.emails.length.toLocaleString())),
-      React.createElement('div',{className:'stat'},React.createElement('div',{className:'stat-label'},'Domains in DB'),React.createElement('div',{className:'stat-value amber'},db.domains.length.toLocaleString())),
-      React.createElement('div',{className:'stat'},React.createElement('div',{className:'stat-label'},'Sheets Loaded'),React.createElement('div',{className:'stat-value green'},db.sheets.length)),
-      React.createElement('div',{className:'stat'},React.createElement('div',{className:'stat-label'},'Total Records'),React.createElement('div',{className:'stat-value'},(db.emails.length+db.domains.length).toLocaleString()))
-    ),
-
-    // Upload card
-    React.createElement('div',{className:'card'},
-      React.createElement('div',{className:'card-title'},'📤 Add More Sheets to Master DB'),
-      !parsed
-        ?React.createElement('div',{
-            className:`upload-zone${drag?' drag':''}`,
-            onDragOver:e=>{e.preventDefault();setDrag(true)},
-            onDragLeave:()=>setDrag(false),
-            onDrop:e=>{e.preventDefault();setDrag(false);handleFile(e.dataTransfer.files[0])},
-            onClick:()=>fileRef.current.click()
-          },
-          React.createElement('input',{ref:fileRef,type:'file',accept:'.csv',style:{display:'none'},onChange:e=>handleFile(e.target.files[0])}),
-          React.createElement('div',{className:'upload-icon'},'📂'),
-          React.createElement('div',{className:'upload-title'},'Drop CSV here or click to browse'),
-          React.createElement('div',{className:'upload-sub'},'Columns with "Email" or "Domain" in the header are auto-detected')
-        )
-        :React.createElement('div',null,
-          React.createElement('div',{className:'notice notice-success'},`✅ ${parsed.length} rows loaded — review column assignments below`),
-          React.createElement('div',{className:'card-title'},'Assign each column:'),
-          React.createElement('div',{className:'table-wrap'},
-            React.createElement('table',null,
-              React.createElement('thead',null,
-                React.createElement('tr',null,
-                  React.createElement('th',null,'Column Name'),
-                  React.createElement('th',null,'Auto-detected as'),
-                  React.createElement('th',null,'Override')
-                )
-              ),
-              React.createElement('tbody',null,
-                headers.map(h=>React.createElement('tr',{key:h},
-                  React.createElement('td',null,React.createElement('span',{className:'tag'},h)),
-                  React.createElement('td',null,
-                    colMap[h]==='email'?React.createElement('span',{className:'badge badge-email'},'📧 Email'):
-                    colMap[h]==='domain'?React.createElement('span',{className:'badge badge-domain'},'🌐 Domain'):
-                    React.createElement('span',{className:'badge badge-info'},'Other data')
-                  ),
-                  React.createElement('td',null,
-                    React.createElement('select',{value:colMap[h]||'data',onChange:e=>setColMap({...colMap,[h]:e.target.value}),style:{fontSize:12}},
-                      React.createElement('option',{value:'email'},'📧 Email column'),
-                      React.createElement('option',{value:'domain'},'🌐 Domain column'),
-                      React.createElement('option',{value:'data'},'Other data (skip)')
-                    )
-                  )
-                ))
-              )
-            )
-          ),
-          React.createElement('div',{style:{marginTop:12}},
-            React.createElement('label',{style:{fontSize:12,fontWeight:600,color:'var(--text2)',textTransform:'uppercase',letterSpacing:'.4px'}},
-              'Sheet Label'),
-            React.createElement('div',{style:{marginTop:5}},
-              React.createElement('input',{type:'text',value:sheetName,onChange:e=>setSheetName(e.target.value),placeholder:'e.g. June Batch 2',style:{width:260}})
-            )
-          ),
-          React.createElement('div',{className:'flex gap-2 mt-3'},
-            React.createElement('button',{className:'btn btn-primary',onClick:handleImport,disabled:loading||!Object.values(colMap).some(v=>v!=='data')},
-              loading?'⏳ Importing…':'🚀 Import to Master DB'),
-            React.createElement('button',{className:'btn',onClick:()=>setParsed(null)},'✕ Cancel')
-          )
-        )
-    ),
-
-    // Sheet log
-    db.sheets.length>0&&React.createElement('div',{className:'card'},
-      React.createElement('div',{className:'card-title'},'📚 Loaded Sheets'),
-      React.createElement('div',{className:'table-wrap'},
-        React.createElement('table',null,
-          React.createElement('thead',null,
-            React.createElement('tr',null,
-              React.createElement('th',null,'Sheet'),
-              React.createElement('th',null,'Emails'),
-              React.createElement('th',null,'Domains'),
-              React.createElement('th',null,'Loaded At')
-            )
-          ),
-          React.createElement('tbody',null,
-            db.sheets.map((s,i)=>React.createElement('tr',{key:i},
-              React.createElement('td',null,s.name),
-              React.createElement('td',null,React.createElement('span',{className:'badge badge-email'},s.emailCount??'—')),
-              React.createElement('td',null,React.createElement('span',{className:'badge badge-domain'},s.domainCount??'—')),
-              React.createElement('td',null,React.createElement('span',{className:'text-sm'},s.addedAt))
-            ))
-          )
-        )
-      )
-    ),
-
-    // Browse
-    React.createElement('div',{className:'card'},
-      React.createElement('div',{className:'section-header'},
-        React.createElement('div',{className:'flex gap-2 items-center'},
-          React.createElement('button',{className:`btn btn-sm${tab==='emails'?' btn-primary':''}`,onClick:()=>setTab('emails')},`📧 Emails (${db.emails.length.toLocaleString()})`),
-          React.createElement('button',{className:`btn btn-sm${tab==='domains'?' btn-primary':''}`,onClick:()=>setTab('domains')},`🌐 Domains (${db.domains.length.toLocaleString()})`)
-        ),
-        React.createElement('input',{className:'search-input',placeholder:'🔍 Search…',value:search,onChange:e=>setSearch(e.target.value)})
-      ),
-      filtered.length===0
-        ?React.createElement('div',{className:'empty-state'},'No records found.')
-        :React.createElement('div',null,
-          React.createElement('div',{className:'table-wrap'},
-            React.createElement('table',null,
-              React.createElement('thead',null,
-                React.createElement('tr',null,
-                  React.createElement('th',null,tab==='emails'?'Email':'Domain'),
-                  React.createElement('th',null,'Source'),
-                  React.createElement('th',null,'Added')
-                )
-              ),
-              React.createElement('tbody',null,
-                filtered.slice(0,200).map((item,i)=>React.createElement('tr',{key:i},
-                  React.createElement('td',null,item.value),
-                  React.createElement('td',null,React.createElement('span',{className:'tag'},item.sheet||'—')),
-                  React.createElement('td',null,React.createElement('span',{className:'text-sm'},item.addedAt))
-                ))
-              )
-            )
-          ),
-          filtered.length>200&&React.createElement('div',{className:'text-sm mt-2'},`Showing 200 of ${filtered.length.toLocaleString()}. Use search to narrow.`)
-        )
-    )
-  );
-}
-
-// ── CHECKER PAGE ─────────────────────────────────────────────────────────────
-function CheckerPage({db,showToast}){
-  const [drag,setDrag]=useState(false);
-  const [parsed,setParsed]=useState(null);
-  const [colMap,setColMap]=useState({});
-  const [results,setResults]=useState(null);
-  const [checking,setChecking]=useState(false);
-  const [viewTab,setViewTab]=useState('all');
-  const [search,setSearch]=useState('');
-  const fileRef=useRef();
-
-  // Single entry
-  const [singleEmail,setSingleEmail]=useState('');
-  const [singleDomain,setSingleDomain]=useState('');
-  const [singleResult,setSingleResult]=useState(null);
-  const [mode,setMode]=useState('bulk');
-
-  function handleFile(file){
-    if(!file)return;
-    Papa.parse(file,{header:true,skipEmptyLines:true,complete:(res)=>{
-      const rows=res.data;if(!rows.length)return;
-      setParsed(rows);setResults(null);
-      const headers=Object.keys(rows[0]);
-      const {emailCols,domainCols}=autoDetectCols(headers);
-      const map={};
-      headers.forEach(h=>{
-        if(emailCols.includes(h))map[h]='email';
-        else if(domainCols.includes(h))map[h]='domain';
-        else map[h]='data';
-      });
-      setColMap(map);
-    }});
-  }
-
-  function runCheck(){
-    if(!parsed)return;
-    setChecking(true);
-    setTimeout(()=>{
-      const emailSet=new Set(db.emails.map(e=>normalizeEmail(e.value)));
-      const domainSet=new Set(db.domains.map(d=>normalizeDomain(d.value)));
-      const emailCols=Object.entries(colMap).filter(([,v])=>v==='email').map(([k])=>k);
-      const domainCols=Object.entries(colMap).filter(([,v])=>v==='domain').map(([k])=>k);
-
-      const out=parsed.map(row=>{
-        let overallStatus='NEW';
-        const emailStatuses={};
-        const domainStatuses={};
-
-        emailCols.forEach(ec=>{
-          const v=normalizeEmail(row[ec]);
-          emailStatuses[ec]=v&&v.includes('@')?(emailSet.has(v)?'DUPLICATE':'NEW'):'';
-        });
-        domainCols.forEach(dc=>{
-          const v=normalizeDomain(row[dc]);
-          domainStatuses[dc]=v&&v.includes('.')?(domainSet.has(v)?'DUPLICATE':'NEW'):'';
-        });
-
-        const allStatuses=[...Object.values(emailStatuses),...Object.values(domainStatuses)].filter(Boolean);
-        if(allStatuses.length===0)overallStatus='UNCHECKED';
-        else if(allStatuses.some(s=>s==='DUPLICATE'))overallStatus='DUPLICATE';
-        else overallStatus='NEW';
-
-        // Build detail strings for email/domain check columns
-        const emailDetail=emailCols.map(ec=>`${ec}: ${emailStatuses[ec]||'—'}`).join(' | ');
-        const domainDetail=domainCols.map(dc=>`${dc}: ${domainStatuses[dc]||'—'}`).join(' | ');
-
-        return{...row,__status:overallStatus,__emailDetail:emailDetail,__domainDetail:domainDetail};
-      });
-
-      setResults(out);setChecking(false);setViewTab('all');
-      const dups=out.filter(r=>r.__status==='DUPLICATE').length;
-      const news=out.filter(r=>r.__status==='NEW').length;
-      showToast(`✓ ${news} new · ${dups} duplicates`);
-    },500);
-  }
-
-  function checkSingle(){
-    const emailSet=new Set(db.emails.map(e=>normalizeEmail(e.value)));
-    const domainSet=new Set(db.domains.map(d=>normalizeDomain(d.value)));
-    const email=normalizeEmail(singleEmail);
-    const domain=normalizeDomain(singleDomain);
-    setSingleResult({
-      email,domain,
-      emailStatus:email?(emailSet.has(email)?'DUPLICATE':'NEW'):'',
-      domainStatus:domain?(domainSet.has(domain)?'DUPLICATE':'NEW'):''
-    });
-  }
-
-  function doDownload(filter){
-    if(!results)return;
-    let rows=results;
-    if(filter==='new')rows=rows.filter(r=>r.__status==='NEW');
-    if(filter==='dup')rows=rows.filter(r=>r.__status==='DUPLICATE');
-    // Remove internal keys, add STATUS column at front
-    const clean=rows.map(row=>{
-      const {__status,__emailDetail,__domainDetail,...rest}=row;
-      return{STATUS:__status,...rest};
-    });
-    downloadCSV(clean,`dupguard_${filter}_${Date.now()}.csv`);
-    showToast(`Downloaded ${rows.length} rows`);
-  }
-
-  const headers=parsed?Object.keys(parsed[0]||{}).filter(h=>!h.startsWith('__')):[];
-  const emailCols=Object.entries(colMap).filter(([,v])=>v==='email').map(([k])=>k);
-  const domainCols=Object.entries(colMap).filter(([,v])=>v==='domain').map(([k])=>k);
-  const otherCols=Object.entries(colMap).filter(([,v])=>v==='data').map(([k])=>k);
-
-  const newCount=results?results.filter(r=>r.__status==='NEW').length:0;
-  const dupCount=results?results.filter(r=>r.__status==='DUPLICATE').length:0;
-  const unCount=results?results.filter(r=>r.__status==='UNCHECKED').length:0;
-
-  const displayRows=useMemo(()=>{
-    if(!results)return[];
-    let r=results;
-    if(viewTab==='new')r=r.filter(x=>x.__status==='NEW');
-    if(viewTab==='dup')r=r.filter(x=>x.__status==='DUPLICATE');
-    if(search)r=r.filter(x=>Object.values(x).join(' ').toLowerCase().includes(search.toLowerCase()));
-    return r;
-  },[results,viewTab,search]);
-
-  // Show cols in table: status first, then email cols, then domain cols, then first 4 other cols
-  const tableCols=useMemo(()=>[...emailCols,...domainCols,...otherCols.slice(0,4)],[colMap]);
-
-  return React.createElement('div',{className:'page'},
-    React.createElement('div',null,
-      React.createElement('div',{className:'page-title'},'🔍 Duplicate Checker'),
-      React.createElement('div',{className:'page-sub'},`Checking against ${db.emails.length.toLocaleString()} emails & ${db.domains.length.toLocaleString()} domains`)
-    ),
-
-    React.createElement('div',{className:'flex gap-2 mb-3'},
-      React.createElement('button',{className:`btn${mode==='bulk'?' btn-primary':''}`,onClick:()=>setMode('bulk')},'📁 Bulk CSV Check'),
-      React.createElement('button',{className:`btn${mode==='single'?' btn-primary':''}`,onClick:()=>setMode('single')},'✏️ Single Entry')
-    ),
-
-    // Single mode
-    mode==='single'&&React.createElement('div',{className:'card'},
-      React.createElement('div',{className:'card-title'},'✏️ Quick Check — Single Entry'),
-      React.createElement('div',{style:{display:'flex',gap:12,flexWrap:'wrap',alignItems:'flex-end'}},
-        React.createElement('div',{style:{flex:1,minWidth:200}},
-          React.createElement('label',{style:{display:'block',fontSize:12,fontWeight:600,color:'var(--text2)',marginBottom:5,textTransform:'uppercase',letterSpacing:'.4px'}},'Email'),
-          React.createElement('input',{type:'text',placeholder:'john@example.com',value:singleEmail,onChange:e=>setSingleEmail(e.target.value),style:{width:'100%'}})
-        ),
-        React.createElement('div',{style:{flex:1,minWidth:200}},
-          React.createElement('label',{style:{display:'block',fontSize:12,fontWeight:600,color:'var(--text2)',marginBottom:5,textTransform:'uppercase',letterSpacing:'.4px'}},'Domain'),
-          React.createElement('input',{type:'text',placeholder:'example.com',value:singleDomain,onChange:e=>setSingleDomain(e.target.value),style:{width:'100%'}})
-        ),
-        React.createElement('button',{className:'btn btn-primary',onClick:checkSingle,disabled:!singleEmail&&!singleDomain},'🔍 Check')
-      ),
-      singleResult&&React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginTop:14}},
-        singleResult.email&&React.createElement('div',{className:'stat'},
-          React.createElement('div',{className:'stat-label'},'Email'),
-          React.createElement('div',{style:{fontFamily:"'DM Mono',monospace",fontSize:12,marginBottom:7,overflow:'hidden',textOverflow:'ellipsis'}},singleResult.email),
-          singleResult.emailStatus==='DUPLICATE'
-            ?React.createElement('span',{className:'badge badge-dup'},'⚠ DUPLICATE in master DB')
-            :React.createElement('span',{className:'badge badge-new'},'✓ NEW — not in master DB')
-        ),
-        singleResult.domain&&React.createElement('div',{className:'stat'},
-          React.createElement('div',{className:'stat-label'},'Domain'),
-          React.createElement('div',{style:{fontFamily:"'DM Mono',monospace",fontSize:12,marginBottom:7,overflow:'hidden',textOverflow:'ellipsis'}},singleResult.domain),
-          singleResult.domainStatus==='DUPLICATE'
-            ?React.createElement('span',{className:'badge badge-dup'},'⚠ DUPLICATE in master DB')
-            :React.createElement('span',{className:'badge badge-new'},'✓ NEW — not in master DB')
-        )
-      )
-    ),
-
-    // Bulk mode
-    mode==='bulk'&&React.createElement('div',null,
-      // Step 1 — Upload
-      !parsed&&React.createElement('div',null,
-        React.createElement('div',{className:'notice notice-info'},
-          '💡 Upload your team's CSV. Columns with "email" or "domain" in the header are auto-detected. All other columns (Name, Status, etc.) are preserved in the output.'
-        ),
-        React.createElement('div',{
-          className:`upload-zone${drag?' drag':''}`,
-          onDragOver:e=>{e.preventDefault();setDrag(true)},
-          onDragLeave:()=>setDrag(false),
-          onDrop:e=>{e.preventDefault();setDrag(false);handleFile(e.dataTransfer.files[0])},
-          onClick:()=>fileRef.current.click()
-        },
-          React.createElement('input',{ref:fileRef,type:'file',accept:'.csv',style:{display:'none'},onChange:e=>handleFile(e.target.files[0])}),
-          React.createElement('div',{className:'upload-icon'},'📤'),
-          React.createElement('div',{className:'upload-title'},'Upload team CSV to check'),
-          React.createElement('div',{className:'upload-sub'},'All your columns come back in the output — sorted into New / Duplicate')
-        )
-      ),
-
-      // Step 2 — Column review
-      parsed&&!results&&React.createElement('div',{className:'card'},
-        React.createElement('div',{className:'card-title'},`📂 ${parsed.length} rows — Review column assignments`),
-        React.createElement('div',{className:'notice notice-info'},
-          `Auto-detected: ${emailCols.length} email column${emailCols.length!==1?'s':''} (${emailCols.join(', ')||'none'}), ${domainCols.length} domain column${domainCols.length!==1?'s':''} (${domainCols.join(', ')||'none'}). ${otherCols.length} other columns will be passed through unchanged.`
-        ),
-        React.createElement('div',{className:'table-wrap'},
-          React.createElement('table',null,
-            React.createElement('thead',null,
-              React.createElement('tr',null,
-                React.createElement('th',null,'Column'),
-                React.createElement('th',null,'Sample Data'),
-                React.createElement('th',null,'Type'),
-                React.createElement('th',null,'Change')
-              )
-            ),
-            React.createElement('tbody',null,
-              headers.map(h=>{
-                const sample=(parsed.slice(0,3).map(r=>r[h]).filter(Boolean).join(', ')||'—').substring(0,50);
-                return React.createElement('tr',{key:h},
-                  React.createElement('td',null,React.createElement('span',{className:'tag'},h)),
-                  React.createElement('td',null,React.createElement('span',{style:{fontSize:11,color:'var(--text2)',fontFamily:"'DM Mono',monospace"}},sample)),
-                  React.createElement('td',null,
-                    colMap[h]==='email'?React.createElement('span',{className:'badge badge-email'},'📧 Email — will check'):
-                    colMap[h]==='domain'?React.createElement('span',{className:'badge badge-domain'},'🌐 Domain — will check'):
-                    React.createElement('span',{className:'badge badge-info'},'Passthrough — not checked')
-                  ),
-                  React.createElement('td',null,
-                    React.createElement('select',{value:colMap[h]||'data',onChange:e=>setColMap({...colMap,[h]:e.target.value}),style:{fontSize:12}},
-                      React.createElement('option',{value:'email'},'📧 Email — check'),
-                      React.createElement('option',{value:'domain'},'🌐 Domain — check'),
-                      React.createElement('option',{value:'data'},'Passthrough — skip')
-                    )
-                  )
-                );
-              })
-            )
-          )
-        ),
-        React.createElement('div',{className:'flex gap-2 mt-3'},
-          React.createElement('button',{className:'btn btn-primary',onClick:runCheck,disabled:checking||(!emailCols.length&&!domainCols.length)},
-            checking?'⏳ Checking…':'🔍 Run Duplicate Check'
-          ),
-          React.createElement('button',{className:'btn',onClick:()=>{setParsed(null);setResults(null)}},'✕ Reset')
-        )
-      ),
-
-      // Results
-      results&&React.createElement('div',null,
-        React.createElement('div',{className:'stats'},
-          React.createElement('div',{className:'stat'},React.createElement('div',{className:'stat-label'},'Total Rows'),React.createElement('div',{className:'stat-value blue'},results.length)),
-          React.createElement('div',{className:'stat'},React.createElement('div',{className:'stat-label'},'✓ New'),React.createElement('div',{className:'stat-value green'},newCount)),
-          React.createElement('div',{className:'stat'},React.createElement('div',{className:'stat-label'},'⚠ Duplicates'),React.createElement('div',{className:'stat-value red'},dupCount)),
-          React.createElement('div',{className:'stat'},
-            React.createElement('div',{className:'stat-label'},'Duplicate Rate'),
-            React.createElement('div',{className:'stat-value amber'},`${results.length?Math.round(dupCount/results.length*100):0}%`)
-          )
-        ),
-
-        React.createElement('div',{className:'card'},
-          // Downloads
-          React.createElement('div',{className:'flex gap-2 mb-3 items-center justify-between',style:{flexWrap:'wrap'}},
-            React.createElement('div',{className:'flex gap-2',style:{flexWrap:'wrap'}},
-              React.createElement('button',{className:'btn btn-success',onClick:()=>doDownload('all')},`⬇ All Rows (${results.length})`),
-              React.createElement('button',{className:'btn btn-success',onClick:()=>doDownload('new')},`⬇ New Only (${newCount})`),
-              React.createElement('button',{className:'btn btn-danger',onClick:()=>doDownload('dup')},`⬇ Duplicates (${dupCount})`)
-            ),
-            React.createElement('button',{className:'btn btn-sm',onClick:()=>{setParsed(null);setResults(null);setSearch('')}},'🔄 New Check')
-          ),
-
-          React.createElement('div',{className:'notice notice-success'},
-            `✓ Downloaded files include ALL original columns (${headers.join(', ')}) plus a STATUS column added at the front.`
-          ),
-
-          // Tabs + search
-          React.createElement('div',{className:'flex items-center justify-between',style:{flexWrap:'wrap',gap:8,marginBottom:12}},
-            React.createElement('div',{className:'result-tabs',style:{margin:0}},
-              React.createElement('button',{className:`result-tab${viewTab==='all'?' active-all':''}`,onClick:()=>setViewTab('all')},`All (${results.length})`),
-              React.createElement('button',{className:`result-tab${viewTab==='new'?' active-new':''}`,onClick:()=>setViewTab('new')},`✓ New (${newCount})`),
-              React.createElement('button',{className:`result-tab${viewTab==='dup'?' active-dup':''}`,onClick:()=>setViewTab('dup')},`⚠ Dup (${dupCount})`)
-            ),
-            React.createElement('input',{className:'search-input',placeholder:'🔍 Filter rows…',value:search,onChange:e=>setSearch(e.target.value)})
-          ),
-
-          // Table
-          React.createElement('div',{className:'table-wrap'},
-            React.createElement('table',null,
-              React.createElement('thead',null,
-                React.createElement('tr',null,
-                  React.createElement('th',null,'Status'),
-                  ...tableCols.map(c=>{
-                    const type=colMap[c]||'data';
-                    const label=type==='email'?`📧 ${c}`:type==='domain'?`🌐 ${c}`:c;
-                    return React.createElement('th',{key:c},label);
-                  })
-                )
-              ),
-              React.createElement('tbody',null,
-                displayRows.slice(0,150).map((row,i)=>
-                  React.createElement('tr',{key:i},
-                    React.createElement('td',null,
-                      row.__status==='DUPLICATE'?React.createElement('span',{className:'badge badge-dup'},'⚠ DUP'):
-                      row.__status==='NEW'?React.createElement('span',{className:'badge badge-new'},'✓ NEW'):
-                      React.createElement('span',{className:'badge badge-info'},'—')
-                    ),
-                    ...tableCols.map(c=>{
-                      const type=colMap[c]||'data';
-                      const val=row[c]||'';
-                      let badge=null;
-                      if(type==='email'&&val){
-                        const v=normalizeEmail(val);
-                        const isDup=new Set(db.emails.map(e=>normalizeEmail(e.value))).has(v);
-                        badge=isDup?React.createElement('span',{className:'badge badge-dup',style:{fontSize:10,marginLeft:4}},'dup'):React.createElement('span',{className:'badge badge-new',style:{fontSize:10,marginLeft:4}},'new');
-                      }
-                      if(type==='domain'&&val){
-                        const v=normalizeDomain(val);
-                        const isDup=new Set(db.domains.map(d=>normalizeDomain(d.value))).has(v);
-                        badge=isDup?React.createElement('span',{className:'badge badge-dup',style:{fontSize:10,marginLeft:4}},'dup'):React.createElement('span',{className:'badge badge-new',style:{fontSize:10,marginLeft:4}},'new');
-                      }
-                      return React.createElement('td',{key:c,style:{fontFamily:type==='data'?'inherit':"'DM Mono',monospace"}},
-                        val, badge
-                      );
-                    })
-                  )
-                )
-              )
-            )
-          ),
-          displayRows.length>150&&React.createElement('div',{className:'text-sm mt-2'},`Showing 150 of ${displayRows.length}. Download for full data.`)
-        )
-      )
-    )
-  );
-}
-
-// ── DEPLOY PAGE ──────────────────────────────────────────────────────────────
-function DeployPage(){
-  return React.createElement('div',{className:'page'},
-    React.createElement('div',null,
-      React.createElement('div',{className:'page-title'},'🚀 Deploy for Your Team'),
-      React.createElement('div',{className:'page-sub'},'Host this as a shared URL so all 6-7 team members can access the same tool — free, forever.')
-    ),
-    React.createElement('div',{className:'notice notice-warn'},
-      '⚠️ Right now data is in your browser only (localStorage). After deploying to GitHub Pages, each team member's checker tab reads from the master DB that's embedded in this file. To share live DB updates, use the Google Sheets sync method below.'
-    ),
-    React.createElement('div',{className:'card'},
-      React.createElement('div',{className:'card-title'},'⭐ Option 1 — GitHub Pages (Free, Recommended)'),
-      [
-        ['1','Download this file','Save this page as index.html (File → Save As in your browser)'],
-        ['2','Create GitHub account','Go to github.com → Free plan is enough'],
-        ['3','Create a new repo','Click + → New repository → Name: dupguard → Public → Create'],
-        ['4','Upload index.html','Click "Add file" → "Upload files" → drag index.html → Commit changes'],
-        ['5','Enable Pages','Settings → Pages → Source: Deploy from branch → Branch: main → Save'],
-        ['6','Share with team','Your URL: https://YOURUSERNAME.github.io/dupguard — share this link!'],
-      ].map(([n,t,d])=>React.createElement('div',{key:n,className:'step'},
-        React.createElement('div',{className:'step-num'},n),
-        React.createElement('div',null,
-          React.createElement('div',{className:'step-title'},t),
-          React.createElement('div',{className:'step-desc'},d)
-        )
-      ))
-    ),
-    React.createElement('div',{className:'card'},
-      React.createElement('div',{className:'card-title'},'☁️ Option 2 — Live DB Sync via Google Sheets API'),
-      React.createElement('div',{className:'notice notice-info'},'Use this so when you add new sheets in Admin, all team members see the updated master DB instantly without re-deploying.'),
-      [
-        ['1','Open your Google Sheet','The one you shared — already has your data'],
-        ['2','Open Apps Script','Extensions → Apps Script → paste the provided Web App code'],
-        ['3','Deploy as Web App','Deploy → New → Web App → Execute as: Me → Anyone can access → Copy URL'],
-        ['4','Add URL to the code','In index.html, set APPS_SCRIPT_URL to your deployment URL'],
-        ['5','All team members sync','Admin uploads → Google Sheet updates → Team checker pulls live data'],
-      ].map(([n,t,d])=>React.createElement('div',{key:n,className:'step'},
-        React.createElement('div',{className:'step-num'},n),
-        React.createElement('div',null,
-          React.createElement('div',{className:'step-title'},t),
-          React.createElement('div',{className:'step-desc'},d)
-        )
-      ))
-    ),
-    React.createElement('div',{className:'card'},
-      React.createElement('div',{className:'card-title'},'📋 Apps Script Code to Paste'),
-      React.createElement('pre',{style:{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:6,padding:14,fontSize:11,fontFamily:"'DM Mono',monospace",overflowX:'auto',lineHeight:1.6,color:'var(--text)'}},
-`function doGet(e) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet();
-  const emails = [], domains = [];
-  sheet.getSheets().forEach(tab => {
-    const data = tab.getDataRange().getValues();
+        <!-- ================= CLOUD DEPLOY GUIDE ================= -->
+        <div id="view-deploy" class="hidden bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-6">
+            <div>
+                <h2 class="text-xl font-bold">Connect App to Real-Time Google Sheet Cloud</h2>
+                <p class="text-gray-500 text-sm mt-1">Follow these instructions to synchronize all 6-7 team members with your live data dynamically.</p>
+            </div>
+            <hr class="border-gray-200">
+            <div class="space-y-4">
+                <h3 class="font-semibold text-gray-900">Step 1: Deploy Google Apps Script</h3>
+                <p class="text-sm text-gray-600">Open your master Google Sheet. Click <strong>Extensions &gt; Apps Script</strong>, clear the editor, paste the script block below, and click <strong>Deploy &gt; New Deployment</strong> (Web App, configure access to "Anyone").</p>
+                <pre class="bg-gray-900 text-green-400 p-4 rounded-lg text-xs font-mono overflow-x-auto">
+function doGet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheets = ss.getSheets();
+  var masterDomains = [];
+  var masterEmails = [];
+  
+  sheets.forEach(function(sheet) {
+    var data = sheet.getDataRange().getValues();
     if (data.length < 2) return;
-    const headers = data[0].map(h => h.toString().toLowerCase());
-    const emailIdxs = headers.map((h,i)=>/email/.test(h)&&!/sent|status/.test(h)?i:-1).filter(i=>i>=0);
-    const domainIdxs = headers.map((h,i)=>/domain/.test(h)?i:-1).filter(i=>i>=0);
-    for (let r = 1; r < data.length; r++) {
-      emailIdxs.forEach(i=>{ const v=(data[r][i]||'').toString().trim().toLowerCase(); if(v.includes('@'))emails.push(v); });
-      domainIdxs.forEach(i=>{ let v=(data[r][i]||'').toString().trim().toLowerCase().replace(/^https?:\/\//,'').replace(/^www\./,'').split('/')[0]; if(v.includes('.'))domains.push(v); });
+    
+    var headers = data[0].map(function(h) { return String(h).toLowerCase(); });
+    var emailCols = [];
+    var domainCols = [];
+    
+    headers.forEach(function(header, idx) {
+      if (header.indexOf('email') !== -1) emailCols.push(idx);
+      if (header.indexOf('domain') !== -1) domainCols.push(idx);
+    });
+    
+    for (var r = 1; r < data.length; r++) {
+      emailCols.forEach(function(c) {
+        var val = String(data[r][c]).trim().toLowerCase();
+        if (val && masterEmails.indexOf(val) === -1) masterEmails.push(val);
+      });
+      domainCols.forEach(function(c) {
+        var val = String(data[r][c]).trim().toLowerCase();
+        if (val) {
+          val = val.replace(/^(https?:\/\/)?(www\.)?/, '');
+          if (masterDomains.indexOf(val) === -1) masterDomains.push(val);
+        }
+      });
     }
   });
-  const unique = arr => [...new Set(arr)];
-  return ContentService.createTextOutput(JSON.stringify({emails:unique(emails),domains:unique(domains)})).setMimeType(ContentService.MimeType.JSON);
-}`
-      )
-    )
-  );
-}
+  
+  var result = { domains: masterDomains, emails: masterEmails };
+  return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+}</pre>
+            </div>
+        </div>
+    </main>
 
-// ── APP ROOT ─────────────────────────────────────────────────────────────────
-function App(){
-  const [db,setDB]=useState(()=>loadDB());
-  const [tab,setTab]=useState('checker');
-  const [toast,setToast]=useState(null);
-  const toastKey=useRef(0);
+    <script>
+        // Global State
+        let db = { domains: new Set(), emails: new Set() };
+        let processedData = [];
+        let originalHeaders = [];
 
-  function showToast(msg){toastKey.current++;setToast({msg,key:toastKey.current});}
+        // Tab Switcher Function
+        function switchTab(tabId) {
+            ['checker', 'admin', 'deploy'].forEach(t => {
+                document.getElementById('view-' + t).classList.add('hidden');
+                document.getElementById('tab-' + t).className = "inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300";
+            });
+            document.getElementById('view-' + tabId).classList.remove('hidden');
+            document.getElementById('tab-' + tabId).className = "inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium border-indigo-600 text-indigo-600";
+        }
 
-  return React.createElement('div',null,
-    React.createElement('nav',{className:'nav'},
-      React.createElement('div',{className:'nav-brand'},
-        React.createElement('div',{className:'brand-dot'}),
-        'DupGuard'
-      ),
-      React.createElement('div',{className:'nav-tabs'},
-        React.createElement('button',{className:`nav-tab${tab==='checker'?' active':''}`,onClick:()=>setTab('checker')},'🔍 Checker'),
-        React.createElement('button',{className:`nav-tab${tab==='admin'?' active':''}`,onClick:()=>setTab('admin')},'🗄 Admin DB'),
-        React.createElement('button',{className:`nav-tab${tab==='deploy'?' active':''}`,onClick:()=>setTab('deploy')},'🚀 Deploy')
-      ),
-      React.createElement('div',{className:'nav-badge'},
-        React.createElement('div',{className:'pulse'}),
-        `${(db.emails.length+db.domains.length).toLocaleString()} records live`
-      )
-    ),
-    tab==='checker'&&React.createElement(CheckerPage,{db,showToast}),
-    tab==='admin'&&React.createElement(AdminPage,{db,setDB,showToast}),
-    tab==='deploy'&&React.createElement(DeployPage),
-    toast&&React.createElement(Toast,{key:toast.key,msg:toast.msg,onDone:()=>setToast(null)})
-  );
-}
+        // Cache Handler
+        window.addEventListener('DOMContentLoaded', () => {
+            const cachedDomains = localStorage.getItem('dup_domains');
+            const cachedEmails = localStorage.getItem('dup_emails');
+            if (cachedDomains && cachedEmails) {
+                db.domains = new Set(JSON.parse(cachedDomains));
+                db.emails = new Set(JSON.parse(cachedEmails));
+                updateStats();
+            }
+        });
 
-ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
-</script>
+        function updateStats() {
+            document.getElementById('statDomains').innerText = db.domains.size.toLocaleString();
+            document.getElementById('statEmails').innerText = db.emails.size.toLocaleString();
+        }
+
+        function cleanDomain(dom) {
+            if (!dom) return '';
+            return dom.toString().trim().toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0];
+        }
+
+        function cleanEmail(em) {
+            if (!em) return '';
+            return em.toString().trim().toLowerCase();
+        }
+
+        // Admin Base Upload
+        function handleAdminUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    if (results.data.length === 0) return alert('File contains no row entries.');
+                    
+                    const keys = Object.keys(results.data[0]);
+                    const emailFields = keys.filter(k => k.toLowerCase().includes('email'));
+                    const domainFields = keys.filter(k => k.toLowerCase().includes('domain'));
+
+                    results.data.forEach(row => {
+                        emailFields.forEach(f => { if(row[f]) db.emails.add(cleanEmail(row[f])); });
+                        domainFields.forEach(f => { if(row[f]) db.domains.add(cleanDomain(row[f])); });
+                    });
+
+                    localStorage.setItem('dup_domains', JSON.stringify([...db.domains]));
+                    localStorage.setItem('dup_emails', JSON.stringify([...db.emails]));
+                    updateStats();
+                    alert('Database populated successfully!');
+                }
+            });
+        }
+
+        // Processing Module
+        function handleTeamUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            document.getElementById('teamFileLabel').innerText = file.name;
+
+            Papa.parse(file, {
+                header: false,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    if (results.data.length < 2) return alert('CSV data must contain a heading row.');
+
+                    originalHeaders = results.data[0];
+                    const rawDataRows = results.data.slice(1);
+
+                    const emailIndices = [];
+                    const domainIndices = [];
+
+                    originalHeaders.forEach((header, idx) => {
+                        const hLower = header.toLowerCase();
+                        if (hLower.includes('email')) emailIndices.push(idx);
+                        if (hLower.includes('domain')) domainIndices.push(idx);
+                    });
+
+                    document.getElementById('columnSelectors').classList.remove('hidden');
+                    document.getElementById('emailColBadge').innerText = emailIndices.map(i => originalHeaders[i]).join(', ') || 'None';
+                    document.getElementById('domainColBadge').innerText = domainIndices.map(i => originalHeaders[i]).join(', ') || 'None';
+
+                    let duplicateCount = 0;
+                    processedData = rawDataRows.map(row => {
+                        let isDuplicate = false;
+
+                        emailIndices.forEach(idx => {
+                            if (row[idx] && db.emails.has(cleanEmail(row[idx]))) isDuplicate = true;
+                        });
+
+                        domainIndices.forEach(idx => {
+                            if (row[idx] && db.domains.has(cleanDomain(row[idx]))) isDuplicate = true;
+                        });
+
+                        if (isDuplicate) duplicateCount++;
+                        return { status: isDuplicate ? 'DUPLICATE' : 'NEW', rowData: row };
+                    });
+
+                    renderResultsTable(duplicateCount);
+                }
+            });
+        }
+
+        function renderResultsTable(dupCount) {
+            const resultsSection = document.getElementById('resultsSection');
+            const summary = document.getElementById('resultsSummary');
+            const headerRow = document.getElementById('resultsHeader');
+            const body = document.getElementById('resultsBody');
+
+            summary.innerText = `${processedData.length} entries scanned. Unique rows: ${processedData.length - dupCount}, Duplicates flagged: ${dupCount}.`;
+            headerRow.innerHTML = '<th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">DUP GUARD STATUS</th>' + 
+                originalHeaders.map(h => `<th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">${h}</th>`).join('');
+
+            body.innerHTML = '';
+            processedData.slice(0, 50).forEach(item => {
+                const tr = document.createElement('tr');
+                const badgeClass = item.status === 'NEW' ? 'badge-new' : 'badge-dup';
+                
+                let tdContent = `<td class="px-6 py-4 whitespace-nowrap"><span class="px-2.5 py-1 rounded-full text-xs font-semibold ${badgeClass}">${item.status}</span></td>`;
+                item.rowData.forEach(cell => {
+                    tdContent += `<td class="px-6 py-4 whitespace-nowrap text-gray-600">${cell || ''}</td>`;
+                });
+                
+                tr.innerHTML = tdContent;
+                body.appendChild(tr);
+            });
+
+            resultsSection.classList.remove('hidden');
+        }
+
+        // Downloader
+        function downloadCSV(filterType) {
+            let recordsToExport = [];
+
+            if (filterType === 'all') {
+                recordsToExport = processedData;
+            } else if (filterType === 'new') {
+                recordsToExport = processedData.filter(d => d.status === 'NEW');
+            } else {
+                recordsToExport = processedData.filter(d => d.status === 'DUPLICATE');
+            }
+
+            const outHeaders = ['DUP GUARD STATUS', ...originalHeaders];
+            const outputRows = [outHeaders];
+
+            recordsToExport.forEach(item => {
+                outputRows.push([item.status, ...item.rowData]);
+            });
+
+            const csvContent = Papa.unparse(outputRows);
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute("download", `dupguard_export_${filterType}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
 </body>
 </html>
